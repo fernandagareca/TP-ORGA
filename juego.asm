@@ -4,6 +4,15 @@ extern scanf
 extern puts
 extern strcpy
 extern strcmp
+;cancular direccion : %1 : fil %2 :col, %3: cantidad_columnas
+%macro calcular_direccion_de_una_posicion 3
+        movzx   rax,    BYTE [%1]              ; rax = fila (ampliar a 64 bits para cálculos)
+        dec     al                          ; fila - 1
+        imul    rax,    %3                     ; (fila - 1) * CANT_COL
+        movzx   rbx,    BYTE [%2]              ; rbx = columna (ampliar a 64 bits)
+        add     rax,    rbx                    ; (fila - 1) * CANT_COL + columna
+        dec     al                          ; índice base 0
+%endmacro
 ; imprime la matriz => 
 ;%1 : fomato para imprimir, %2: cadena de salto de linea, %3:matriz  %4:cantidad de columnas %5: cantidad de filas %6: indice fil fila %7: indice col 
 %macro imprimir_matriz 7
@@ -17,35 +26,31 @@ extern strcmp
         cmp     BYTE [%7],      %4          ; Verificar si se llegó al final de las columnas
         jg      %%cambioFila
 
-        movzx   rax, BYTE [%6]              ; rax = fila (ampliar a 64 bits para cálculos)
-        dec     al                          ; fila - 1
-        imul    rax, %4                     ; (fila - 1) * CANT_COL
-        movzx   rbx, BYTE [%7]              ; rbx = columna (ampliar a 64 bits)
-        add     rax, rbx                    ; (fila - 1) * CANT_COL + columna
-        dec     al                          ; índice base 0
+        calcular_direccion_de_una_posicion      %6,%7,%4
+
         movzx   rdx, BYTE [%3 + rax]        ; Cargar carácter desde matriz
 
         ; Imprimir el carácter
-        sub     rsp, 8
-        mov     rdi, %1
-        mov     rsi, rdx                    ; El carácter se pasa en rsi
-        xor     rax, rax                    ; Limpiar rax para printf
+        sub     rsp,    8
+        mov     rdi,    %1
+        mov     rsi,    rdx                    ; El carácter se pasa en rsi
+        xor     rax,    rax                    ; Limpiar rax para printf
         call    printf
-        add     rsp, 8
+        add     rsp,    8
 
         inc     BYTE [%7]
         jmp     %%inicio
 
 %%cambioFila:
         ; Imprimir salto de línea
-        sub     rsp, 8
-        mov     rdi, %2
-        xor     rax, rax                    ; Limpiar rax para printf
+        sub     rsp,    8
+        mov     rdi,    %2
+        xor     rax,    rax                    ; Limpiar rax para printf
         call    printf
-        add     rsp, 8
+        add     rsp,    8
 
-        inc     BYTE [%6]                   ; Ir a la siguiente fila
-        mov     BYTE [%7], 1                ; Reiniciar columna
+        inc     BYTE    [%6]                   ; Ir a la siguiente fila
+        mov     BYTE    [%7],   1                ; Reiniciar columna
         jmp     %%inicio
 
 %%fin:
@@ -53,24 +58,24 @@ extern strcmp
 
 ; imprime las opciones que hay => en %1 esta el vector, en %2 esta la cantidad de elementos, %3: cadena para pedir
 %macro mostrarOpciones 3
-                sub     rsp,    8 
-                mov     rdi,    %3
-                call    puts
-                add     rsp,    8 
-                mov     rbx,    %2
-        opcionesJugada:
-                cmp     rbx,    0
-                jle      finOpciones
+        sub     rsp,    8 
+        mov     rdi,    %3
+        call    puts
+        add     rsp,    8 
+        mov     rbx,    %2
+opcionesJugada:
+        cmp     rbx,    0
+        jle      finOpciones
 
-                lea rdi, [%1]      ; Dirección del vector destino
-                sub    rsp,    8 
-                call puts              ; Llamar a strcpy para copiar la cadena
-                add    rsp,    8 
-                dec     rbx
-                jmp     opcionesJugada
+        lea     rdi,    [%1]      ; Dirección del vector destino
+        sub     rsp,    8 
+        call    puts              ; Llamar a strcpy para copiar la cadena
+        add     rsp,    8 
+        dec     rbx
+        jmp     opcionesJugada
 
-        finOpciones:
-                %endmacro
+finOpciones:
+%endmacro
 ;ejecuta la instruccion ingresada => %1 : opcion ingresada, %2 : opcion
 %macro ejecutar_intruccion 2
 
@@ -81,7 +86,7 @@ extern strcmp
         add     rsp,    8 
         cmp     rax,     0; son iguales
         je      final
-        %endmacro
+%endmacro
 ;voltea la matriz hacia abajo %1 matriz fuente, %2: matriz destino
 %macro tablero_vertical 2
         mov     rdi,    0       ;direccion inicio
@@ -89,11 +94,11 @@ extern strcmp
 %%espejo:
         cmp     rdi,   rsi
         jg      %%fin
-        mov al, [%1 + rdi]   ; inicio
-        mov dl, [%1 + rsi]   
+        mov     al, [%1 + rdi]   ; inicio
+        mov     dl, [%1 + rsi]   
 
-        mov [%2 + rdi], dl
-        mov [%2 + rsi], al
+        mov     [%2 + rdi], dl
+        mov     [%2 + rsi], al
 
         inc     rdi
         dec     rsi
@@ -101,15 +106,7 @@ extern strcmp
 
 %%fin:
 %endmacro   
-;cancular direccion : %1 : fil %2 :col, %3: long elemento, %4: cantidad columnas
-%macro calcular_direccion_de_una_posicion 3
-        movzx   rax, BYTE [%1]              ; rax = fila (ampliar a 64 bits para cálculos)
-        dec     al                          ; fila - 1
-        imul    rax, %3                     ; (fila - 1) * CANT_COL
-        movzx   rbx, BYTE [%2]              ; rbx = columna (ampliar a 64 bits)
-        add     rax, rbx                    ; (fila - 1) * CANT_COL + columna
-        dec     al                          ; índice base 0
-%endmacro
+
 ;rotar derecha =>  %1:i,%2:j,%3:CANT_FIL,%4:CANT_COL,%5:matriz,%6:tablero_rotacion_derecha
 %macro rotar_derecha 6
         mov     BYTE [%1],      1
@@ -139,9 +136,7 @@ extern strcmp
 %%aca:
 %endmacro
 ;--------------------------
-;--------------------------
-;--------------------------
-;--------------------------
+
 
 section .data
         formato                 db      ' %c ', 0
@@ -165,27 +160,26 @@ section .data
         segundo_oficial         db      "O"
         soldados                times           24        db      "X" ; vector de 24 soldados
         dirrecciones_invalidas  dq      0,8,40,48,56,67,104,112,280,288,328,336,344,352,384,392
-        ;dirrecciones_validas    dq      
         invalido                db      " ",0
 
 
 section .bss
-        i                       resb    1
-        j                       resb    1
-        opcion_ingresada        resb    1
-        opciones                resb    2
-        tablero                 resb    CANT_FIL*CANT_COL ; tablero a llenar
-        tablero_espejo          resb    49
-        tablero_rotacion_derecha          resb    49
-        tablero_rotacion_izquierda          resb    49
+        i                               resb    1
+        j                               resb    1
+        opcion_ingresada                resb    1
+        opciones                        resb    2
+        tablero                         resb    CANT_FIL*CANT_COL ; tablero a llenar
+        tablero_espejo                  resb    49
+        tablero_rotacion_derecha        resb    49
+        tablero_rotacion_izquierda      resb    49
 
 section .text
 main:
         rotar_derecha           i,j,CANT_FIL,CANT_COL,matriz,tablero_rotacion_derecha
-        imprimir_matriz formato, saltoLinea,tablero_rotacion_derecha,CANT_COL,CANT_FIL,i,j
-        imprimir_matriz formato, saltoLinea,matriz,CANT_COL,CANT_FIL,i,j
-        tablero_vertical matriz, tablero_espejo
-        imprimir_matriz formato, saltoLinea,tablero_espejo,CANT_COL,CANT_FIL,i,j
+        imprimir_matriz         formato,saltoLinea,tablero_rotacion_derecha,CANT_COL,CANT_FIL,i,j
+        imprimir_matriz         formato, saltoLinea,matriz,CANT_COL,CANT_FIL,i,j
+        tablero_vertical        matriz, tablero_espejo
+        imprimir_matriz         formato, saltoLinea,tablero_espejo,CANT_COL,CANT_FIL,i,j
 
 
         lea     rdi, [opciones]      ; Dirección del vector destino
@@ -194,13 +188,13 @@ main:
         call    strcpy              ; Llamar a strcpy para copiar la cadena
         add     rsp,    8 
         mov     rbx,    1
-        mostrarOpciones opciones, 1, cadena_pedir
+        mostrarOpciones         opciones, 1, cadena_pedir
         sub     rsp,    8 
-        mov     rdi, formato_Caracter
-        mov     rsi, opcion_ingresada
+        mov     rdi,    formato_Caracter
+        mov     rsi,     opcion_ingresada
         call    scanf
         add     rsp,    8 
-        ; ejecutar_intruccion opcion_ingresada, opcion_salir
+        ejecutar_intruccion     opcion_ingresada, opcion_salir
 final:
         ret
 

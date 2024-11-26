@@ -1,0 +1,448 @@
+     1                                  global main
+     2                                  extern printf;    imprimir_matriz formato, saltoLinea,matriz,CANT_COL,CANT_FIL,i,j
+     3                                  extern scanf
+     4                                  extern puts
+     5                                  extern strcpy
+     6                                  extern strcmp
+     7                                  ;cancular direccion : %1 : fil %2 :col, %3: cantidad_columnas
+     8                                  %macro calcular_direccion_de_una_posicion 3
+     9                                          movzx   rax,    BYTE [%1]              ; rax = fila (ampliar a 64 bits para cálculos)
+    10                                          dec     al                          ; fila - 1
+    11                                          imul    rax,    %3                     ; (fila - 1) * CANT_COL
+    12                                          movzx   rbx,    BYTE [%2]              ; rbx = columna (ampliar a 64 bits)
+    13                                          add     rax,    rbx                    ; (fila - 1) * CANT_COL + columna
+    14                                          dec     al                          ; índice base 0
+    15                                  %endmacro
+    16                                  ; imprime la matriz => 
+    17                                  ;%1 : fomato para imprimir, %2: cadena de salto de linea, %3:matriz  %4:cantidad de columnas %5: cantidad de filas %6: indice fil fila %7: indice col 
+    18                                  %macro imprimir_matriz 7
+    19                                          mov     BYTE [%6],      1           ; Inicializar fila (1 byte)
+    20                                          mov     BYTE [%7],      1           ; Inicializar columna (1 byte)
+    21                                  
+    22                                  %%inicio:
+    23                                          cmp     BYTE [%6],      %5          ; Verificar si se llegó al final de las filas
+    24                                          jg      %%fin
+    25                                  
+    26                                          cmp     BYTE [%7],      %4          ; Verificar si se llegó al final de las columnas
+    27                                          jg      %%cambioFila
+    28                                  
+    29                                          calcular_direccion_de_una_posicion      %6,%7,%4
+    30                                  
+    31                                          movzx   rdx, BYTE [%3 + rax]        ; Cargar carácter desde matriz
+    32                                  
+    33                                          ; Imprimir el carácter
+    34                                          sub     rsp,    8
+    35                                          mov     rdi,    %1
+    36                                          mov     rsi,    rdx                    ; El carácter se pasa en rsi
+    37                                          xor     rax,    rax                    ; Limpiar rax para printf
+    38                                          call    printf
+    39                                          add     rsp,    8
+    40                                  
+    41                                          inc     BYTE [%7]
+    42                                          jmp     %%inicio
+    43                                  
+    44                                  %%cambioFila:
+    45                                          ; Imprimir salto de línea
+    46                                          sub     rsp,    8
+    47                                          mov     rdi,    %2
+    48                                          xor     rax,    rax                    ; Limpiar rax para printf
+    49                                          call    printf
+    50                                          add     rsp,    8
+    51                                  
+    52                                          inc     BYTE    [%6]                   ; Ir a la siguiente fila
+    53                                          mov     BYTE    [%7],   1                ; Reiniciar columna
+    54                                          jmp     %%inicio
+    55                                  
+    56                                  %%fin:
+    57                                  %endmacro
+    58                                  
+    59                                  ; imprime las opciones que hay => en %1 esta el vector, en %2 esta la cantidad de elementos, %3: cadena para pedir
+    60                                  %macro mostrarOpciones 3
+    61                                          sub     rsp,    8 
+    62                                          mov     rdi,    %3
+    63                                          call    puts
+    64                                          add     rsp,    8 
+    65                                          mov     rbx,    %2
+    66                                  opcionesJugada:
+    67                                          cmp     rbx,    0
+    68                                          jle      finOpciones
+    69                                  
+    70                                          lea     rdi,    [%1]      ; Dirección del vector destino
+    71                                          sub     rsp,    8 
+    72                                          call    puts              ; Llamar a strcpy para copiar la cadena
+    73                                          add     rsp,    8 
+    74                                          dec     rbx
+    75                                          jmp     opcionesJugada
+    76                                  
+    77                                  finOpciones:
+    78                                  %endmacro
+    79                                  ;ejecuta la instruccion ingresada => %1 : opcion ingresada, %2 : opcion
+    80                                  %macro ejecutar_intruccion 2
+    81                                  
+    82                                          mov     rdi,    %1
+    83                                          mov     rsi,    %2
+    84                                          sub     rsp,    8 
+    85                                          call    strcmp
+    86                                          add     rsp,    8 
+    87                                          cmp     rax,     0; son iguales
+    88                                          je      final
+    89                                  %endmacro
+    90                                  ;voltea la matriz hacia abajo %1 matriz fuente, %2: matriz destino
+    91                                  %macro tablero_vertical 2
+    92                                          mov     rdi,    0       ;direccion inicio
+    93                                          mov     rsi,    48     ;direccion final 
+    94                                  %%espejo:
+    95                                          cmp     rdi,   rsi
+    96                                          jg      %%fin
+    97                                          mov     al, [%1 + rdi]   ; inicio
+    98                                          mov     dl, [%1 + rsi]   
+    99                                  
+   100                                          mov     [%2 + rdi], dl
+   101                                          mov     [%2 + rsi], al
+   102                                  
+   103                                          inc     rdi
+   104                                          dec     rsi
+   105                                          jmp     %%espejo
+   106                                  
+   107                                  %%fin:
+   108                                  %endmacro   
+   109                                  
+   110                                  ;rotar derecha =>  %1:i,%2:j,%3:CANT_FIL,%4:CANT_COL,%5:matriz,%6:tablero_rotacion_derecha
+   111                                  %macro rotar_derecha 6
+   112                                          mov     BYTE [%1],      1
+   113                                          mov     BYTE [%2],      1
+   114                                  %%inicio:
+   115                                          cmp     BYTE [%1],      %3          
+   116                                          jg      %%aca
+   117                                  
+   118                                          cmp     BYTE [%2],      %4        
+   119                                          jg      %%cambioFila
+   120                                  
+   121                                  
+   122                                          calcular_direccion_de_una_posicion  %2,%1,%4
+   123                                          movzx   rdx, BYTE [%5 + rax]   
+   124                                  
+   125                                  
+   126                                          calcular_direccion_de_una_posicion %1,%2, %4
+   127                                          mov     [%6 + rax], rdx  
+   128                                  
+   129                                          inc     BYTE [%2]                   
+   130                                          jmp     %%inicio                     
+   131                                  
+   132                                  %%cambioFila:
+   133                                          inc     BYTE [%1]                  
+   134                                          mov     BYTE [%2],    1            
+   135                                          jmp     %%inicio
+   136                                  %%aca:
+   137                                  %endmacro
+   138                                  ;--------------------------
+   139                                  
+   140                                  
+   141                                  section .data
+   142 00000000 2025632000                      formato                 db      ' %c ', 0
+   143 00000005 0A00                            saltoLinea              db      10, 0
+   144 00000007 20205858582020                  matriz                  db      ' ', ' ', 'X', 'X', 'X', ' ', ' '  ; Fila 1
+   145 0000000E 20205858582020                                          db      ' ', ' ', 'X', 'X', 'X', ' ', ' '  ; Fila 2
+   146 00000015 58585858585858                                          db      'X', 'X', 'X', 'X', 'X', 'X', 'X'  ; Fila 3
+   147 0000001C 58585858585858                                          db      'X', 'X', 'X', 'X', 'X', 'X', 'X'  ; Fila 4
+   148 00000023 58582E2E2E5858                                          db      'X', 'X', '.', '.', '.', 'X', 'X'  ; Fila 5
+   149 0000002A 20202E2E4F2020                                          db      ' ', ' ', '.', '.', 'O', ' ', ' '  ; Fila 6
+   150 00000031 20204F2E2E2020                                          db      ' ', ' ', 'O', '.', '.', ' ', ' '  ; Fila 7
+   151                                  
+   152                                          CANT_FIL        equ     7
+   153                                          CANT_COL        equ     7
+   154                                          LONG_ELEM       equ     1
+   155 00000038 53656C656363696F6E-             cadena_pedir            db      "Seleccione una opcion",10,0
+   155 00000041 6520756E61206F7063-
+   155 0000004A 696F6E0A00         
+   156 0000004F 5B715D203D20706172-             opcion_salir            db      "[q] = para salir",10,0
+   156 00000058 612073616C69720A00 
+   157 00000061 0000000000000000                posicion                dq      0
+   158 00000069 256300                          formato_Caracter        db      "%c",0
+   159 0000006C 4F                              primer_oficial          db      "O"
+   160 0000006D 4F                              segundo_oficial         db      "O"
+   161 0000006E 58<rep 18h>                     soldados                times           24        db      "X" ; vector de 24 soldados
+   162 00000086 000000000000000008-             dirrecciones_invalidas  dq      0,8,40,48,56,67,104,112,280,288,328,336,344,352,384,392
+   162 0000008F 000000000000002800-
+   162 00000098 000000000000300000-
+   162 000000A1 000000000038000000-
+   162 000000AA 000000004300000000-
+   162 000000B3 000000680000000000-
+   162 000000BC 000070000000000000-
+   162 000000C5 001801000000000000-
+   162 000000CE 200100000000000048-
+   162 000000D7 010000000000005001-
+   162 000000E0 000000000000580100-
+   162 000000E9 000000000060010000-
+   162 000000F2 000000008001000000-
+   162 000000FB 000000880100000000-
+   162 00000104 0000               
+   163 00000106 2000                            invalido                db      " ",0
+   164                                  
+   165                                  
+   166                                  section .bss
+   167 00000000 ??                              i                               resb    1
+   168 00000001 ??                              j                               resb    1
+   169 00000002 ??                              opcion_ingresada                resb    1
+   170 00000003 ????                            opciones                        resb    2
+   171 00000005 <res 31h>                       tablero                         resb    CANT_FIL*CANT_COL ; tablero a llenar
+   172 00000036 <res 31h>                       tablero_espejo                  resb    49
+   173 00000067 <res 31h>                       tablero_rotacion_derecha        resb    49
+   174 00000098 <res 31h>                       tablero_rotacion_izquierda      resb    49
+   175                                  
+   176                                  section .text
+   177                                  main:
+   178                                          rotar_derecha           i,j,CANT_FIL,CANT_COL,matriz,tablero_rotacion_derecha
+   112 00000000 C60425[00000000]01  <1>  mov BYTE [%1], 1
+   113 00000008 C60425[01000000]01  <1>  mov BYTE [%2], 1
+   114                              <1> %%inicio:
+   115 00000010 803C25[00000000]07  <1>  cmp BYTE [%1], %3
+   116 00000018 7F6D                <1>  jg %%aca
+   117                              <1> 
+   118 0000001A 803C25[01000000]07  <1>  cmp BYTE [%2], %4
+   119 00000022 7F52                <1>  jg %%cambioFila
+   120                              <1> 
+   121                              <1> 
+   122                              <1>  calcular_direccion_de_una_posicion %2,%1,%4
+     9 00000024 480FB60425-         <2>  movzx rax, BYTE [%1]
+     9 00000029 [01000000]          <2>
+    10 0000002D FEC8                <2>  dec al
+    11 0000002F 486BC007            <2>  imul rax, %3
+    12 00000033 480FB61C25-         <2>  movzx rbx, BYTE [%2]
+    12 00000038 [00000000]          <2>
+    13 0000003C 4801D8              <2>  add rax, rbx
+    14 0000003F FEC8                <2>  dec al
+   123 00000041 480FB690[07000000]  <1>  movzx rdx, BYTE [%5 + rax]
+   124                              <1> 
+   125                              <1> 
+   126                              <1>  calcular_direccion_de_una_posicion %1,%2, %4
+     9 00000049 480FB60425-         <2>  movzx rax, BYTE [%1]
+     9 0000004E [00000000]          <2>
+    10 00000052 FEC8                <2>  dec al
+    11 00000054 486BC007            <2>  imul rax, %3
+    12 00000058 480FB61C25-         <2>  movzx rbx, BYTE [%2]
+    12 0000005D [01000000]          <2>
+    13 00000061 4801D8              <2>  add rax, rbx
+    14 00000064 FEC8                <2>  dec al
+   127 00000066 488990[67000000]    <1>  mov [%6 + rax], rdx
+   128                              <1> 
+   129 0000006D FE0425[01000000]    <1>  inc BYTE [%2]
+   130 00000074 EB9A                <1>  jmp %%inicio
+   131                              <1> 
+   132                              <1> %%cambioFila:
+   133 00000076 FE0425[00000000]    <1>  inc BYTE [%1]
+   134 0000007D C60425[01000000]01  <1>  mov BYTE [%2], 1
+   135 00000085 EB89                <1>  jmp %%inicio
+   136                              <1> %%aca:
+   179                                          imprimir_matriz         formato,saltoLinea,tablero_rotacion_derecha,CANT_COL,CANT_FIL,i,j
+    19 00000087 C60425[00000000]01  <1>  mov BYTE [%6], 1
+    20 0000008F C60425[01000000]01  <1>  mov BYTE [%7], 1
+    21                              <1> 
+    22                              <1> %%inicio:
+    23 00000097 803C25[00000000]07  <1>  cmp BYTE [%6], %5
+    24 0000009F 0F8F83000000        <1>  jg %%fin
+    25                              <1> 
+    26 000000A5 803C25[01000000]07  <1>  cmp BYTE [%7], %4
+    27 000000AD 7F4B                <1>  jg %%cambioFila
+    28                              <1> 
+    29                              <1>  calcular_direccion_de_una_posicion %6,%7,%4
+     9 000000AF 480FB60425-         <2>  movzx rax, BYTE [%1]
+     9 000000B4 [00000000]          <2>
+    10 000000B8 FEC8                <2>  dec al
+    11 000000BA 486BC007            <2>  imul rax, %3
+    12 000000BE 480FB61C25-         <2>  movzx rbx, BYTE [%2]
+    12 000000C3 [01000000]          <2>
+    13 000000C7 4801D8              <2>  add rax, rbx
+    14 000000CA FEC8                <2>  dec al
+    30                              <1> 
+    31 000000CC 480FB690[67000000]  <1>  movzx rdx, BYTE [%3 + rax]
+    32                              <1> 
+    33                              <1> 
+    34 000000D4 4883EC08            <1>  sub rsp, 8
+    35 000000D8 48BF-               <1>  mov rdi, %1
+    35 000000DA [0000000000000000]  <1>
+    36 000000E2 4889D6              <1>  mov rsi, rdx
+    37 000000E5 4831C0              <1>  xor rax, rax
+    38 000000E8 E8(00000000)        <1>  call printf
+    39 000000ED 4883C408            <1>  add rsp, 8
+    40                              <1> 
+    41 000000F1 FE0425[01000000]    <1>  inc BYTE [%7]
+    42 000000F8 EB9D                <1>  jmp %%inicio
+    43                              <1> 
+    44                              <1> %%cambioFila:
+    45                              <1> 
+    46 000000FA 4883EC08            <1>  sub rsp, 8
+    47 000000FE 48BF-               <1>  mov rdi, %2
+    47 00000100 [0500000000000000]  <1>
+    48 00000108 4831C0              <1>  xor rax, rax
+    49 0000010B E8(00000000)        <1>  call printf
+    50 00000110 4883C408            <1>  add rsp, 8
+    51                              <1> 
+    52 00000114 FE0425[00000000]    <1>  inc BYTE [%6]
+    53 0000011B C60425[01000000]01  <1>  mov BYTE [%7], 1
+    54 00000123 E96FFFFFFF          <1>  jmp %%inicio
+    55                              <1> 
+    56                              <1> %%fin:
+   180                                          imprimir_matriz         formato, saltoLinea,matriz,CANT_COL,CANT_FIL,i,j
+    19 00000128 C60425[00000000]01  <1>  mov BYTE [%6], 1
+    20 00000130 C60425[01000000]01  <1>  mov BYTE [%7], 1
+    21                              <1> 
+    22                              <1> %%inicio:
+    23 00000138 803C25[00000000]07  <1>  cmp BYTE [%6], %5
+    24 00000140 0F8F83000000        <1>  jg %%fin
+    25                              <1> 
+    26 00000146 803C25[01000000]07  <1>  cmp BYTE [%7], %4
+    27 0000014E 7F4B                <1>  jg %%cambioFila
+    28                              <1> 
+    29                              <1>  calcular_direccion_de_una_posicion %6,%7,%4
+     9 00000150 480FB60425-         <2>  movzx rax, BYTE [%1]
+     9 00000155 [00000000]          <2>
+    10 00000159 FEC8                <2>  dec al
+    11 0000015B 486BC007            <2>  imul rax, %3
+    12 0000015F 480FB61C25-         <2>  movzx rbx, BYTE [%2]
+    12 00000164 [01000000]          <2>
+    13 00000168 4801D8              <2>  add rax, rbx
+    14 0000016B FEC8                <2>  dec al
+    30                              <1> 
+    31 0000016D 480FB690[07000000]  <1>  movzx rdx, BYTE [%3 + rax]
+    32                              <1> 
+    33                              <1> 
+    34 00000175 4883EC08            <1>  sub rsp, 8
+    35 00000179 48BF-               <1>  mov rdi, %1
+    35 0000017B [0000000000000000]  <1>
+    36 00000183 4889D6              <1>  mov rsi, rdx
+    37 00000186 4831C0              <1>  xor rax, rax
+    38 00000189 E8(00000000)        <1>  call printf
+    39 0000018E 4883C408            <1>  add rsp, 8
+    40                              <1> 
+    41 00000192 FE0425[01000000]    <1>  inc BYTE [%7]
+    42 00000199 EB9D                <1>  jmp %%inicio
+    43                              <1> 
+    44                              <1> %%cambioFila:
+    45                              <1> 
+    46 0000019B 4883EC08            <1>  sub rsp, 8
+    47 0000019F 48BF-               <1>  mov rdi, %2
+    47 000001A1 [0500000000000000]  <1>
+    48 000001A9 4831C0              <1>  xor rax, rax
+    49 000001AC E8(00000000)        <1>  call printf
+    50 000001B1 4883C408            <1>  add rsp, 8
+    51                              <1> 
+    52 000001B5 FE0425[00000000]    <1>  inc BYTE [%6]
+    53 000001BC C60425[01000000]01  <1>  mov BYTE [%7], 1
+    54 000001C4 E96FFFFFFF          <1>  jmp %%inicio
+    55                              <1> 
+    56                              <1> %%fin:
+   181                                          tablero_vertical        matriz, tablero_espejo
+    92 000001C9 BF00000000          <1>  mov rdi, 0
+    93 000001CE BE30000000          <1>  mov rsi, 48
+    94                              <1> %%espejo:
+    95 000001D3 4839F7              <1>  cmp rdi, rsi
+    96 000001D6 7F20                <1>  jg %%fin
+    97 000001D8 8A87[07000000]      <1>  mov al, [%1 + rdi]
+    98 000001DE 8A96[07000000]      <1>  mov dl, [%1 + rsi]
+    99                              <1> 
+   100 000001E4 8897[36000000]      <1>  mov [%2 + rdi], dl
+   101 000001EA 8886[36000000]      <1>  mov [%2 + rsi], al
+   102                              <1> 
+   103 000001F0 48FFC7              <1>  inc rdi
+   104 000001F3 48FFCE              <1>  dec rsi
+   105 000001F6 EBDB                <1>  jmp %%espejo
+   106                              <1> 
+   107                              <1> %%fin:
+   182                                          imprimir_matriz         formato, saltoLinea,tablero_espejo,CANT_COL,CANT_FIL,i,j
+    19 000001F8 C60425[00000000]01  <1>  mov BYTE [%6], 1
+    20 00000200 C60425[01000000]01  <1>  mov BYTE [%7], 1
+    21                              <1> 
+    22                              <1> %%inicio:
+    23 00000208 803C25[00000000]07  <1>  cmp BYTE [%6], %5
+    24 00000210 0F8F83000000        <1>  jg %%fin
+    25                              <1> 
+    26 00000216 803C25[01000000]07  <1>  cmp BYTE [%7], %4
+    27 0000021E 7F4B                <1>  jg %%cambioFila
+    28                              <1> 
+    29                              <1>  calcular_direccion_de_una_posicion %6,%7,%4
+     9 00000220 480FB60425-         <2>  movzx rax, BYTE [%1]
+     9 00000225 [00000000]          <2>
+    10 00000229 FEC8                <2>  dec al
+    11 0000022B 486BC007            <2>  imul rax, %3
+    12 0000022F 480FB61C25-         <2>  movzx rbx, BYTE [%2]
+    12 00000234 [01000000]          <2>
+    13 00000238 4801D8              <2>  add rax, rbx
+    14 0000023B FEC8                <2>  dec al
+    30                              <1> 
+    31 0000023D 480FB690[36000000]  <1>  movzx rdx, BYTE [%3 + rax]
+    32                              <1> 
+    33                              <1> 
+    34 00000245 4883EC08            <1>  sub rsp, 8
+    35 00000249 48BF-               <1>  mov rdi, %1
+    35 0000024B [0000000000000000]  <1>
+    36 00000253 4889D6              <1>  mov rsi, rdx
+    37 00000256 4831C0              <1>  xor rax, rax
+    38 00000259 E8(00000000)        <1>  call printf
+    39 0000025E 4883C408            <1>  add rsp, 8
+    40                              <1> 
+    41 00000262 FE0425[01000000]    <1>  inc BYTE [%7]
+    42 00000269 EB9D                <1>  jmp %%inicio
+    43                              <1> 
+    44                              <1> %%cambioFila:
+    45                              <1> 
+    46 0000026B 4883EC08            <1>  sub rsp, 8
+    47 0000026F 48BF-               <1>  mov rdi, %2
+    47 00000271 [0500000000000000]  <1>
+    48 00000279 4831C0              <1>  xor rax, rax
+    49 0000027C E8(00000000)        <1>  call printf
+    50 00000281 4883C408            <1>  add rsp, 8
+    51                              <1> 
+    52 00000285 FE0425[00000000]    <1>  inc BYTE [%6]
+    53 0000028C C60425[01000000]01  <1>  mov BYTE [%7], 1
+    54 00000294 E96FFFFFFF          <1>  jmp %%inicio
+    55                              <1> 
+    56                              <1> %%fin:
+   183                                  
+   184                                  
+   185 00000299 488D3C25[03000000]              lea     rdi, [opciones]      ; Dirección del vector destino
+   186 000002A1 488D3425[4F000000]              lea     rsi, [opcion_salir]       ; Dirección de la cadena fuente
+   187 000002A9 4883EC08                        sub     rsp,    8 
+   188 000002AD E8(00000000)                    call    strcpy              ; Llamar a strcpy para copiar la cadena
+   189 000002B2 4883C408                        add     rsp,    8 
+   190 000002B6 BB01000000                      mov     rbx,    1
+   191                                          mostrarOpciones         opciones, 1, cadena_pedir
+    61 000002BB 4883EC08            <1>  sub rsp, 8
+    62 000002BF 48BF-               <1>  mov rdi, %3
+    62 000002C1 [3800000000000000]  <1>
+    63 000002C9 E8(00000000)        <1>  call puts
+    64 000002CE 4883C408            <1>  add rsp, 8
+    65 000002D2 BB01000000          <1>  mov rbx, %2
+    66                              <1> opcionesJugada:
+    67 000002D7 4883FB00            <1>  cmp rbx, 0
+    68 000002DB 7E1A                <1>  jle finOpciones
+    69                              <1> 
+    70 000002DD 488D3C25[03000000]  <1>  lea rdi, [%1]
+    71 000002E5 4883EC08            <1>  sub rsp, 8
+    72 000002E9 E8(00000000)        <1>  call puts
+    73 000002EE 4883C408            <1>  add rsp, 8
+    74 000002F2 48FFCB              <1>  dec rbx
+    75 000002F5 EBE0                <1>  jmp opcionesJugada
+    76                              <1> 
+    77                              <1> finOpciones:
+   192 000002F7 4883EC08                        sub     rsp,    8 
+   193 000002FB 48BF-                           mov     rdi,    formato_Caracter
+   193 000002FD [6900000000000000] 
+   194 00000305 48BE-                           mov     rsi,     opcion_ingresada
+   194 00000307 [0200000000000000] 
+   195 0000030F E8(00000000)                    call    scanf
+   196 00000314 4883C408                        add     rsp,    8 
+   197                                          ejecutar_intruccion     opcion_ingresada, opcion_salir
+    81                              <1> 
+    82 00000318 48BF-               <1>  mov rdi, %1
+    82 0000031A [0200000000000000]  <1>
+    83 00000322 48BE-               <1>  mov rsi, %2
+    83 00000324 [4F00000000000000]  <1>
+    84 0000032C 4883EC08            <1>  sub rsp, 8
+    85 00000330 E8(00000000)        <1>  call strcmp
+    86 00000335 4883C408            <1>  add rsp, 8
+    87 00000339 4883F800            <1>  cmp rax, 0
+    88 0000033D 7400                <1>  je final
+   198                                  final:
+   199 0000033F C3                              ret
+   200                                  
