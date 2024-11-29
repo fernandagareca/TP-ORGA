@@ -127,13 +127,13 @@
     53 00000346 61676F6E616C207375-
     53 0000034F 706572696F7220697A-
     53 00000358 717569657264612000 
-    54 00000361 256300                          formato_Caracter        db      "%c",0
-    55 00000364 4F                              primer_oficial          db      "O"
-    56 00000365 4F                              segundo_oficial         db      "O"
-    57 00000366 2E                              pos_vacia               db      "."
-    58 00000367 636C65617200                    cmd_clear               db      "clear",0
-    59 0000036D 0001050607080C0D23-             dirrecciones_invalidas  db      0,1,5,6,7,8,12,13,35,36,40,41,42,43,47,48
-    59 00000376 2428292A2B2F30     
+    54 00000361 20256300                        formato_Caracter        db      " %c",0
+    55 00000365 4F                              primer_oficial          db      "O"
+    56 00000366 4F                              segundo_oficial         db      "O"
+    57 00000367 2E                              pos_vacia               db      "."
+    58 00000368 636C65617200                    cmd_clear               db      "clear",0
+    59 0000036E 0001050607080C0D23-             dirrecciones_invalidas  db      0,1,5,6,7,8,12,13,35,36,40,41,42,43,47,48
+    59 00000377 2428292A2B2F30     
     60                                  
     61                                  
     62                                  section .bss
@@ -322,7 +322,7 @@
    245                                  %endmacro
    246                                  
    247                                  ;voltea la matriz hacia abajo %1 matriz fuente, %2: matriz destino
-   248                                  %macro tablero_vertical 1
+   248                                  %macro tablero_vertical 2
    249                                          mov     rdi,    0       ;direccion inicio
    250                                          mov     rsi,    48     ;direccion final 
    251                                  %%espejo:
@@ -331,8 +331,8 @@
    254                                          mov     al, [%1 + rdi]   ; inicio
    255                                          mov     dl, [%1 + rsi]   
    256                                  
-   257                                          mov     [tablero_espejo + rdi], dl
-   258                                          mov     [tablero_espejo + rsi], al
+   257                                          mov     [%2 + rdi], dl
+   258                                          mov     [%2 + rsi], al
    259                                  
    260                                          inc     rdi
    261                                          dec     rsi
@@ -366,852 +366,506 @@
    289                                  %endmacro
    290                                  ;ejecuta la instruccion ingresada => %1 : opcion ingresada, %2 : opcion
    291                                  %macro ejecutar_intruccion 1
-   292                                          
-   293                                          mov     al,   104
-   294                                          mov     bl,    [opcion_ingresada]
-   295                                          cmp     al,    bl
-   296                                          je      final_juego             ;salir
-   297                                  
-   298                                          mov     al,    49
-   299                                          mov     bl,    [opcion_ingresada]
-   300                                          cmp     al,    bl
-   301                                          je      %%arriba                ;mismo tablero
-   302                                  
-   303                                          mov     al,    50
-   304                                          mov     bl,    [opcion_ingresada]
-   305                                          cmp     al,    bl
-   306                                          je      %%izquierda
-   307                                  
-   308                                          mov     al,    51
-   309                                          mov     bl,    [opcion_ingresada]
+   292                                          mov     bl,    [opcion_ingresada]
+   293                                          mov     al,   104       ; codigo h
+   294                                          cmp     al,    bl
+   295                                          je      final_juego             ;salir
+   296                                  
+   297                                          mov     al,    49       ; codigo 1
+   298                                          cmp     al,    bl
+   299                                          je      %%arriba                ;mismo tablero
+   300                                  
+   301                                          mov     al,    50       ;codigo 2
+   302                                          cmp     al,    bl
+   303                                          je      %%izquierda
+   304                                  
+   305                                          mov     al,    51       ;codigo 3
+   306                                          cmp     al,    bl
+   307                                          je      %%derecha               ;rotar derecha
+   308                                  
+   309                                          mov     al,    52       ;codigo 4
    310                                          cmp     al,    bl
-   311                                          je      %%derecha               ;rotar derecha
-   312                                  
-   313                                          mov     al,    52
-   314                                          mov     bl,    [opcion_ingresada]
-   315                                          cmp     al,    bl
-   316                                          je      %%abajo                 ;rotar abajo
+   311                                          je      %%abajo                 ;rotar abajo
+   312                                          jmp     %%incorrecto
+   313                                  %%incorrecto:
+   314                                          limpiar
+   315                                          imprimir_opcion        opcion_incorrecta
+   316                                          jmp     pedir_tablero
    317                                  %%arriba:
    318                                          copiar_matriz           matriz
    319                                          jmp     %%fin
    320                                  %%derecha:
-   321                                          rotar_derecha           matriz, tablero_rotacion_derecha
-   322                                          copiar_matriz           tablero_rotacion_derecha
-   323                                          jmp     %%fin
-   324                                  %%abajo:
-   325                                          rotar_derecha           matriz, tablero_rotacion_derecha
-   326                                          rotar_derecha           tablero_rotacion_derecha,tablero_espejo
-   327                                          copiar_matriz           tablero_espejo
-   328                                          jmp     %%fin
-   329                                  %%izquierda:
-   330                                          rotar_derecha           matriz, tablero_rotacion_derecha
-   331                                          tablero_vertical          tablero_rotacion_derecha
-   332                                          copiar_matriz           tablero_espejo
-   333                                          jmp     %%fin
-   334                                  %%fin:
-   335                                  
-   336                                  %endmacro
-   337                                  
-   338                                  ; => %1 : 
-   339                                  %macro leer_entrada 0
-   340                                          sub     rsp,    8 
-   341                                          mov     rdi,    formato_Caracter
-   342                                          mov     rsi,     opcion_ingresada
-   343                                          call    scanf           ; espera a que ingreses una opcion
-   344                                          add     rsp,    8 
-   345                                  %endmacro
-   346                                  
-   347                                  section .text
-   348                                  main:
-   349                                  pedir_tablero:
-   350                                          imprimir_opcion         cadena_pedir
+   321                                          rotar_derecha           matriz, tablero
+   322                                          jmp     %%fin
+   323                                  %%abajo:
+   324                                          tablero_vertical        matriz, tablero
+   325                                          jmp     %%fin
+   326                                  %%izquierda:
+   327                                          rotar_derecha           matriz, tablero_rotacion_derecha
+   328                                          tablero_vertical          tablero_rotacion_derecha,tablero
+   329                                          jmp     %%fin
+   330                                  %%fin:
+   331                                  
+   332                                  %endmacro
+   333                                  
+   334                                  ; => %1 : 
+   335                                  %macro leer_entrada 0
+   336                                          sub     rsp,    8 
+   337                                          mov     rdi,    formato_Caracter
+   338                                          mov     rsi,     opcion_ingresada
+   339                                          call    scanf           ; espera a que ingreses una opcion
+   340                                          add     rsp,    8 
+   341                                  %endmacro
+   342                                  
+   343                                  section .text
+   344                                  main:
+   345                                  pedir_tablero:
+   346                                          imprimir_opcion         cadena_pedir
    138 00000000 48BF-               <1>  mov rdi,%1
    138 00000002 [2301000000000000]  <1>
    139 0000000A 4883EC08            <1>  sub rsp, 8
    140 0000000E E8(00000000)        <1>  call puts
    141 00000013 4883C408            <1>  add rsp, 8
-   351                                          imprimir_opcion         tablero_normal
+   347                                          imprimir_opcion         tablero_normal
    138 00000017 48BF-               <1>  mov rdi,%1
    138 00000019 [5D01000000000000]  <1>
    139 00000021 4883EC08            <1>  sub rsp, 8
    140 00000025 E8(00000000)        <1>  call puts
    141 0000002A 4883C408            <1>  add rsp, 8
-   352                                          imprimir_opcion         tablero_abajo
+   348                                          imprimir_opcion         tablero_abajo
    138 0000002E 48BF-               <1>  mov rdi,%1
    138 00000030 [DC01000000000000]  <1>
    139 00000038 4883EC08            <1>  sub rsp, 8
    140 0000003C E8(00000000)        <1>  call puts
    141 00000041 4883C408            <1>  add rsp, 8
-   353                                          imprimir_opcion         tablero_derecha
+   349                                          imprimir_opcion         tablero_derecha
    138 00000045 48BF-               <1>  mov rdi,%1
    138 00000047 [AC01000000000000]  <1>
    139 0000004F 4883EC08            <1>  sub rsp, 8
    140 00000053 E8(00000000)        <1>  call puts
    141 00000058 4883C408            <1>  add rsp, 8
-   354                                          imprimir_opcion         tablero_izquierda
+   350                                          imprimir_opcion         tablero_izquierda
    138 0000005C 48BF-               <1>  mov rdi,%1
    138 0000005E [7A01000000000000]  <1>
    139 00000066 4883EC08            <1>  sub rsp, 8
    140 0000006A E8(00000000)        <1>  call puts
    141 0000006F 4883C408            <1>  add rsp, 8
-   355                                          leer_entrada  
-   340 00000073 4883EC08            <1>  sub rsp, 8
-   341 00000077 48BF-               <1>  mov rdi, formato_Caracter
-   341 00000079 [6103000000000000]  <1>
-   342 00000081 48BE-               <1>  mov rsi, opcion_ingresada
-   342 00000083 [0200000000000000]  <1>
-   343 0000008B E8(00000000)        <1>  call scanf
-   344 00000090 4883C408            <1>  add rsp, 8
-   356                                          ejecutar_intruccion     opcion_ingresada
-   292                              <1> 
-   293 00000094 B068                <1>  mov al, 104
-   294 00000096 8A1C25[02000000]    <1>  mov bl, [opcion_ingresada]
-   295 0000009D 38D8                <1>  cmp al, bl
-   296 0000009F 0F846D090000        <1>  je final_juego
-   297                              <1> 
-   298 000000A5 B031                <1>  mov al, 49
-   299 000000A7 8A1C25[02000000]    <1>  mov bl, [opcion_ingresada]
-   300 000000AE 38D8                <1>  cmp al, bl
-   301 000000B0 742F                <1>  je %%arriba
-   302                              <1> 
-   303 000000B2 B032                <1>  mov al, 50
-   304 000000B4 8A1C25[02000000]    <1>  mov bl, [opcion_ingresada]
-   305 000000BB 38D8                <1>  cmp al, bl
-   306 000000BD 0F8416020000        <1>  je %%izquierda
-   307                              <1> 
-   308 000000C3 B033                <1>  mov al, 51
-   309 000000C5 8A1C25[02000000]    <1>  mov bl, [opcion_ingresada]
-   310 000000CC 38D8                <1>  cmp al, bl
-   311 000000CE 7432                <1>  je %%derecha
-   312                              <1> 
-   313 000000D0 B034                <1>  mov al, 52
-   314 000000D2 8A1C25[02000000]    <1>  mov bl, [opcion_ingresada]
-   315 000000D9 38D8                <1>  cmp al, bl
-   316 000000DB 0F84C9000000        <1>  je %%abajo
+   351                                          leer_entrada  
+   336 00000073 4883EC08            <1>  sub rsp, 8
+   337 00000077 48BF-               <1>  mov rdi, formato_Caracter
+   337 00000079 [6103000000000000]  <1>
+   338 00000081 48BE-               <1>  mov rsi, opcion_ingresada
+   338 00000083 [0200000000000000]  <1>
+   339 0000008B E8(00000000)        <1>  call scanf
+   340 00000090 4883C408            <1>  add rsp, 8
+   352                                          ejecutar_intruccion     opcion_ingresada
+   292 00000094 8A1C25[02000000]    <1>  mov bl, [opcion_ingresada]
+   293 0000009B B068                <1>  mov al, 104
+   294 0000009D 38D8                <1>  cmp al, bl
+   295 0000009F 0F8419050000        <1>  je final_juego
+   296                              <1> 
+   297 000000A5 B031                <1>  mov al, 49
+   298 000000A7 38D8                <1>  cmp al, bl
+   299 000000A9 744F                <1>  je %%arriba
+   300                              <1> 
+   301 000000AB B032                <1>  mov al, 50
+   302 000000AD 38D8                <1>  cmp al, bl
+   303 000000AF 0F8426010000        <1>  je %%izquierda
+   304                              <1> 
+   305 000000B5 B033                <1>  mov al, 51
+   306 000000B7 38D8                <1>  cmp al, bl
+   307 000000B9 7460                <1>  je %%derecha
+   308                              <1> 
+   309 000000BB B034                <1>  mov al, 52
+   310 000000BD 38D8                <1>  cmp al, bl
+   311 000000BF 0F84E2000000        <1>  je %%abajo
+   312 000000C5 EB00                <1>  jmp %%incorrecto
+   313                              <1> %%incorrecto:
+   314                              <1>  limpiar
+   285 000000C7 48BF-               <2>  mov rdi, cmd_clear
+   285 000000C9 [6803000000000000]  <2>
+   286 000000D1 4883EC08            <2>  sub rsp, 8
+   287 000000D5 E8(00000000)        <2>  call system
+   288 000000DA 4883C408            <2>  add rsp, 8
+   315                              <1>  imprimir_opcion opcion_incorrecta
+   138 000000DE 48BF-               <2>  mov rdi,%1
+   138 000000E0 [3C01000000000000]  <2>
+   139 000000E8 4883EC08            <2>  sub rsp, 8
+   140 000000EC E8(00000000)        <2>  call puts
+   141 000000F1 4883C408            <2>  add rsp, 8
+   316 000000F5 E906FFFFFF          <1>  jmp pedir_tablero
    317                              <1> %%arriba:
    318                              <1>  copiar_matriz matriz
-   274 000000E1 B900000000          <2>  mov rcx, 0
+   274 000000FA B900000000          <2>  mov rcx, 0
    275                              <2> %%inicio:
-   276 000000E6 4883F931            <2>  cmp rcx, 49
-   277 000000EA 7F11                <2>  jg %%fin
-   278 000000EC 8A81[F2000000]      <2>  mov al, [%1+ rcx]
-   279 000000F2 8881[03000000]      <2>  mov [tablero+rcx], al
-   280 000000F8 48FFC1              <2>  inc rcx
-   281 000000FB EBE9                <2>  jmp %%inicio
+   276 000000FF 4883F931            <2>  cmp rcx, 49
+   277 00000103 7F11                <2>  jg %%fin
+   278 00000105 8A81[F2000000]      <2>  mov al, [%1+ rcx]
+   279 0000010B 8881[03000000]      <2>  mov [tablero+rcx], al
+   280 00000111 48FFC1              <2>  inc rcx
+   281 00000114 EBE9                <2>  jmp %%inicio
    282                              <2> %%fin:
-   319 000000FD E9AB020000          <1>  jmp %%fin
+   319 00000116 E978010000          <1>  jmp %%fin
    320                              <1> %%derecha:
-   321                              <1>  rotar_derecha matriz, tablero_rotacion_derecha
-    76 00000102 C60425[00000000]01  <2>  mov BYTE [i], 1
-    77 0000010A C60425[01000000]01  <2>  mov BYTE [j], 1
+   321                              <1>  rotar_derecha matriz, tablero
+    76 0000011B C60425[00000000]01  <2>  mov BYTE [i], 1
+    77 00000123 C60425[01000000]01  <2>  mov BYTE [j], 1
     78                              <2> %%inicio:
-    79 00000112 803C25[00000000]07  <2>  cmp BYTE [i], CANT_FIL
-    80 0000011A 7F6D                <2>  jg %%aca
+    79 0000012B 803C25[00000000]07  <2>  cmp BYTE [i], CANT_FIL
+    80 00000133 7F6D                <2>  jg %%aca
     81                              <2> 
-    82 0000011C 803C25[01000000]07  <2>  cmp BYTE [j], CANT_COL
-    83 00000124 7F52                <2>  jg %%cambioFila
+    82 00000135 803C25[01000000]07  <2>  cmp BYTE [j], CANT_COL
+    83 0000013D 7F52                <2>  jg %%cambioFila
     84                              <2> 
     85                              <2>  calcular_direccion_de_una_posicion j,i,CANT_COL
-    10 00000126 480FB60425-         <3>  movzx rax, BYTE [%1]
-    10 0000012B [01000000]          <3>
-    11 0000012F FEC8                <3>  dec al
-    12 00000131 486BC007            <3>  imul rax, %3
-    13 00000135 480FB61C25-         <3>  movzx rbx, BYTE [%2]
-    13 0000013A [00000000]          <3>
-    14 0000013E 4801D8              <3>  add rax, rbx
-    15 00000141 FEC8                <3>  dec al
-    86 00000143 480FB690[F2000000]  <2>  movzx rdx, BYTE [%1 + rax]
+    10 0000013F 480FB60425-         <3>  movzx rax, BYTE [%1]
+    10 00000144 [01000000]          <3>
+    11 00000148 FEC8                <3>  dec al
+    12 0000014A 486BC007            <3>  imul rax, %3
+    13 0000014E 480FB61C25-         <3>  movzx rbx, BYTE [%2]
+    13 00000153 [00000000]          <3>
+    14 00000157 4801D8              <3>  add rax, rbx
+    15 0000015A FEC8                <3>  dec al
+    86 0000015C 480FB690[F2000000]  <2>  movzx rdx, BYTE [%1 + rax]
     87                              <2> 
     88                              <2>  calcular_direccion_de_una_posicion i,j, CANT_COL
-    10 0000014B 480FB60425-         <3>  movzx rax, BYTE [%1]
-    10 00000150 [00000000]          <3>
-    11 00000154 FEC8                <3>  dec al
-    12 00000156 486BC007            <3>  imul rax, %3
-    13 0000015A 480FB61C25-         <3>  movzx rbx, BYTE [%2]
-    13 0000015F [01000000]          <3>
-    14 00000163 4801D8              <3>  add rax, rbx
-    15 00000166 FEC8                <3>  dec al
-    89 00000168 488990[65000000]    <2>  mov [%2 + rax], rdx
+    10 00000164 480FB60425-         <3>  movzx rax, BYTE [%1]
+    10 00000169 [00000000]          <3>
+    11 0000016D FEC8                <3>  dec al
+    12 0000016F 486BC007            <3>  imul rax, %3
+    13 00000173 480FB61C25-         <3>  movzx rbx, BYTE [%2]
+    13 00000178 [01000000]          <3>
+    14 0000017C 4801D8              <3>  add rax, rbx
+    15 0000017F FEC8                <3>  dec al
+    89 00000181 488990[03000000]    <2>  mov [%2 + rax], rdx
     90                              <2> 
-    91 0000016F FE0425[01000000]    <2>  inc BYTE [j]
-    92 00000176 EB9A                <2>  jmp %%inicio
+    91 00000188 FE0425[01000000]    <2>  inc BYTE [j]
+    92 0000018F EB9A                <2>  jmp %%inicio
     93                              <2> 
     94                              <2> %%cambioFila:
-    95 00000178 FE0425[00000000]    <2>  inc BYTE [i]
-    96 0000017F C60425[01000000]01  <2>  mov BYTE [j], 1
-    97 00000187 EB89                <2>  jmp %%inicio
+    95 00000191 FE0425[00000000]    <2>  inc BYTE [i]
+    96 00000198 C60425[01000000]01  <2>  mov BYTE [j], 1
+    97 000001A0 EB89                <2>  jmp %%inicio
     98                              <2> %%aca:
-   322                              <1>  copiar_matriz tablero_rotacion_derecha
-   274 00000189 B900000000          <2>  mov rcx, 0
-   275                              <2> %%inicio:
-   276 0000018E 4883F931            <2>  cmp rcx, 49
-   277 00000192 7F11                <2>  jg %%fin
-   278 00000194 8A81[65000000]      <2>  mov al, [%1+ rcx]
-   279 0000019A 8881[03000000]      <2>  mov [tablero+rcx], al
-   280 000001A0 48FFC1              <2>  inc rcx
-   281 000001A3 EBE9                <2>  jmp %%inicio
-   282                              <2> %%fin:
-   323 000001A5 E903020000          <1>  jmp %%fin
-   324                              <1> %%abajo:
-   325                              <1>  rotar_derecha matriz, tablero_rotacion_derecha
-    76 000001AA C60425[00000000]01  <2>  mov BYTE [i], 1
-    77 000001B2 C60425[01000000]01  <2>  mov BYTE [j], 1
-    78                              <2> %%inicio:
-    79 000001BA 803C25[00000000]07  <2>  cmp BYTE [i], CANT_FIL
-    80 000001C2 7F6D                <2>  jg %%aca
-    81                              <2> 
-    82 000001C4 803C25[01000000]07  <2>  cmp BYTE [j], CANT_COL
-    83 000001CC 7F52                <2>  jg %%cambioFila
-    84                              <2> 
-    85                              <2>  calcular_direccion_de_una_posicion j,i,CANT_COL
-    10 000001CE 480FB60425-         <3>  movzx rax, BYTE [%1]
-    10 000001D3 [01000000]          <3>
-    11 000001D7 FEC8                <3>  dec al
-    12 000001D9 486BC007            <3>  imul rax, %3
-    13 000001DD 480FB61C25-         <3>  movzx rbx, BYTE [%2]
-    13 000001E2 [00000000]          <3>
-    14 000001E6 4801D8              <3>  add rax, rbx
-    15 000001E9 FEC8                <3>  dec al
-    86 000001EB 480FB690[F2000000]  <2>  movzx rdx, BYTE [%1 + rax]
-    87                              <2> 
-    88                              <2>  calcular_direccion_de_una_posicion i,j, CANT_COL
-    10 000001F3 480FB60425-         <3>  movzx rax, BYTE [%1]
-    10 000001F8 [00000000]          <3>
-    11 000001FC FEC8                <3>  dec al
-    12 000001FE 486BC007            <3>  imul rax, %3
-    13 00000202 480FB61C25-         <3>  movzx rbx, BYTE [%2]
-    13 00000207 [01000000]          <3>
-    14 0000020B 4801D8              <3>  add rax, rbx
-    15 0000020E FEC8                <3>  dec al
-    89 00000210 488990[65000000]    <2>  mov [%2 + rax], rdx
-    90                              <2> 
-    91 00000217 FE0425[01000000]    <2>  inc BYTE [j]
-    92 0000021E EB9A                <2>  jmp %%inicio
-    93                              <2> 
-    94                              <2> %%cambioFila:
-    95 00000220 FE0425[00000000]    <2>  inc BYTE [i]
-    96 00000227 C60425[01000000]01  <2>  mov BYTE [j], 1
-    97 0000022F EB89                <2>  jmp %%inicio
-    98                              <2> %%aca:
-   326                              <1>  rotar_derecha tablero_rotacion_derecha,tablero_espejo
-    76 00000231 C60425[00000000]01  <2>  mov BYTE [i], 1
-    77 00000239 C60425[01000000]01  <2>  mov BYTE [j], 1
-    78                              <2> %%inicio:
-    79 00000241 803C25[00000000]07  <2>  cmp BYTE [i], CANT_FIL
-    80 00000249 7F6D                <2>  jg %%aca
-    81                              <2> 
-    82 0000024B 803C25[01000000]07  <2>  cmp BYTE [j], CANT_COL
-    83 00000253 7F52                <2>  jg %%cambioFila
-    84                              <2> 
-    85                              <2>  calcular_direccion_de_una_posicion j,i,CANT_COL
-    10 00000255 480FB60425-         <3>  movzx rax, BYTE [%1]
-    10 0000025A [01000000]          <3>
-    11 0000025E FEC8                <3>  dec al
-    12 00000260 486BC007            <3>  imul rax, %3
-    13 00000264 480FB61C25-         <3>  movzx rbx, BYTE [%2]
-    13 00000269 [00000000]          <3>
-    14 0000026D 4801D8              <3>  add rax, rbx
-    15 00000270 FEC8                <3>  dec al
-    86 00000272 480FB690[65000000]  <2>  movzx rdx, BYTE [%1 + rax]
-    87                              <2> 
-    88                              <2>  calcular_direccion_de_una_posicion i,j, CANT_COL
-    10 0000027A 480FB60425-         <3>  movzx rax, BYTE [%1]
-    10 0000027F [00000000]          <3>
-    11 00000283 FEC8                <3>  dec al
-    12 00000285 486BC007            <3>  imul rax, %3
-    13 00000289 480FB61C25-         <3>  movzx rbx, BYTE [%2]
-    13 0000028E [01000000]          <3>
-    14 00000292 4801D8              <3>  add rax, rbx
-    15 00000295 FEC8                <3>  dec al
-    89 00000297 488990[34000000]    <2>  mov [%2 + rax], rdx
-    90                              <2> 
-    91 0000029E FE0425[01000000]    <2>  inc BYTE [j]
-    92 000002A5 EB9A                <2>  jmp %%inicio
-    93                              <2> 
-    94                              <2> %%cambioFila:
-    95 000002A7 FE0425[00000000]    <2>  inc BYTE [i]
-    96 000002AE C60425[01000000]01  <2>  mov BYTE [j], 1
-    97 000002B6 EB89                <2>  jmp %%inicio
-    98                              <2> %%aca:
-   327                              <1>  copiar_matriz tablero_espejo
-   274 000002B8 B900000000          <2>  mov rcx, 0
-   275                              <2> %%inicio:
-   276 000002BD 4883F931            <2>  cmp rcx, 49
-   277 000002C1 7F11                <2>  jg %%fin
-   278 000002C3 8A81[34000000]      <2>  mov al, [%1+ rcx]
-   279 000002C9 8881[03000000]      <2>  mov [tablero+rcx], al
-   280 000002CF 48FFC1              <2>  inc rcx
-   281 000002D2 EBE9                <2>  jmp %%inicio
-   282                              <2> %%fin:
-   328 000002D4 E9D4000000          <1>  jmp %%fin
-   329                              <1> %%izquierda:
-   330                              <1>  rotar_derecha matriz, tablero_rotacion_derecha
-    76 000002D9 C60425[00000000]01  <2>  mov BYTE [i], 1
-    77 000002E1 C60425[01000000]01  <2>  mov BYTE [j], 1
-    78                              <2> %%inicio:
-    79 000002E9 803C25[00000000]07  <2>  cmp BYTE [i], CANT_FIL
-    80 000002F1 7F6D                <2>  jg %%aca
-    81                              <2> 
-    82 000002F3 803C25[01000000]07  <2>  cmp BYTE [j], CANT_COL
-    83 000002FB 7F52                <2>  jg %%cambioFila
-    84                              <2> 
-    85                              <2>  calcular_direccion_de_una_posicion j,i,CANT_COL
-    10 000002FD 480FB60425-         <3>  movzx rax, BYTE [%1]
-    10 00000302 [01000000]          <3>
-    11 00000306 FEC8                <3>  dec al
-    12 00000308 486BC007            <3>  imul rax, %3
-    13 0000030C 480FB61C25-         <3>  movzx rbx, BYTE [%2]
-    13 00000311 [00000000]          <3>
-    14 00000315 4801D8              <3>  add rax, rbx
-    15 00000318 FEC8                <3>  dec al
-    86 0000031A 480FB690[F2000000]  <2>  movzx rdx, BYTE [%1 + rax]
-    87                              <2> 
-    88                              <2>  calcular_direccion_de_una_posicion i,j, CANT_COL
-    10 00000322 480FB60425-         <3>  movzx rax, BYTE [%1]
-    10 00000327 [00000000]          <3>
-    11 0000032B FEC8                <3>  dec al
-    12 0000032D 486BC007            <3>  imul rax, %3
-    13 00000331 480FB61C25-         <3>  movzx rbx, BYTE [%2]
-    13 00000336 [01000000]          <3>
-    14 0000033A 4801D8              <3>  add rax, rbx
-    15 0000033D FEC8                <3>  dec al
-    89 0000033F 488990[65000000]    <2>  mov [%2 + rax], rdx
-    90                              <2> 
-    91 00000346 FE0425[01000000]    <2>  inc BYTE [j]
-    92 0000034D EB9A                <2>  jmp %%inicio
-    93                              <2> 
-    94                              <2> %%cambioFila:
-    95 0000034F FE0425[00000000]    <2>  inc BYTE [i]
-    96 00000356 C60425[01000000]01  <2>  mov BYTE [j], 1
-    97 0000035E EB89                <2>  jmp %%inicio
-    98                              <2> %%aca:
-   331                              <1>  tablero_vertical tablero_rotacion_derecha
-   249 00000360 BF00000000          <2>  mov rdi, 0
-   250 00000365 BE30000000          <2>  mov rsi, 48
+   322 000001A2 E9EC000000          <1>  jmp %%fin
+   323                              <1> %%abajo:
+   324                              <1>  tablero_vertical matriz, tablero
+   249 000001A7 BF00000000          <2>  mov rdi, 0
+   250 000001AC BE30000000          <2>  mov rsi, 48
    251                              <2> %%espejo:
-   252 0000036A 4839F7              <2>  cmp rdi, rsi
-   253 0000036D 7F20                <2>  jg %%fin_tablero_espejo
-   254 0000036F 8A87[65000000]      <2>  mov al, [%1 + rdi]
-   255 00000375 8A96[65000000]      <2>  mov dl, [%1 + rsi]
+   252 000001B1 4839F7              <2>  cmp rdi, rsi
+   253 000001B4 7F20                <2>  jg %%fin_tablero_espejo
+   254 000001B6 8A87[F2000000]      <2>  mov al, [%1 + rdi]
+   255 000001BC 8A96[F2000000]      <2>  mov dl, [%1 + rsi]
    256                              <2> 
-   257 0000037B 8897[34000000]      <2>  mov [tablero_espejo + rdi], dl
-   258 00000381 8886[34000000]      <2>  mov [tablero_espejo + rsi], al
+   257 000001C2 8897[03000000]      <2>  mov [%2 + rdi], dl
+   258 000001C8 8886[03000000]      <2>  mov [%2 + rsi], al
    259                              <2> 
-   260 00000387 48FFC7              <2>  inc rdi
-   261 0000038A 48FFCE              <2>  dec rsi
-   262 0000038D EBDB                <2>  jmp %%espejo
+   260 000001CE 48FFC7              <2>  inc rdi
+   261 000001D1 48FFCE              <2>  dec rsi
+   262 000001D4 EBDB                <2>  jmp %%espejo
    263                              <2> 
    264                              <2> %%fin_tablero_espejo:
-   332                              <1>  copiar_matriz tablero_espejo
-   274 0000038F B900000000          <2>  mov rcx, 0
-   275                              <2> %%inicio:
-   276 00000394 4883F931            <2>  cmp rcx, 49
-   277 00000398 7F11                <2>  jg %%fin
-   278 0000039A 8A81[34000000]      <2>  mov al, [%1+ rcx]
-   279 000003A0 8881[03000000]      <2>  mov [tablero+rcx], al
-   280 000003A6 48FFC1              <2>  inc rcx
-   281 000003A9 EBE9                <2>  jmp %%inicio
-   282                              <2> %%fin:
-   333 000003AB EB00                <1>  jmp %%fin
-   334                              <1> %%fin:
-   335                              <1> 
-   357                                          imprimir_matriz         tablero
-   103 000003AD C60425[00000000]01  <1>  mov BYTE [i], 1
-   104 000003B5 C60425[01000000]01  <1>  mov BYTE [j], 1
+   325 000001D6 E9B8000000          <1>  jmp %%fin
+   326                              <1> %%izquierda:
+   327                              <1>  rotar_derecha matriz, tablero_rotacion_derecha
+    76 000001DB C60425[00000000]01  <2>  mov BYTE [i], 1
+    77 000001E3 C60425[01000000]01  <2>  mov BYTE [j], 1
+    78                              <2> %%inicio:
+    79 000001EB 803C25[00000000]07  <2>  cmp BYTE [i], CANT_FIL
+    80 000001F3 7F6D                <2>  jg %%aca
+    81                              <2> 
+    82 000001F5 803C25[01000000]07  <2>  cmp BYTE [j], CANT_COL
+    83 000001FD 7F52                <2>  jg %%cambioFila
+    84                              <2> 
+    85                              <2>  calcular_direccion_de_una_posicion j,i,CANT_COL
+    10 000001FF 480FB60425-         <3>  movzx rax, BYTE [%1]
+    10 00000204 [01000000]          <3>
+    11 00000208 FEC8                <3>  dec al
+    12 0000020A 486BC007            <3>  imul rax, %3
+    13 0000020E 480FB61C25-         <3>  movzx rbx, BYTE [%2]
+    13 00000213 [00000000]          <3>
+    14 00000217 4801D8              <3>  add rax, rbx
+    15 0000021A FEC8                <3>  dec al
+    86 0000021C 480FB690[F2000000]  <2>  movzx rdx, BYTE [%1 + rax]
+    87                              <2> 
+    88                              <2>  calcular_direccion_de_una_posicion i,j, CANT_COL
+    10 00000224 480FB60425-         <3>  movzx rax, BYTE [%1]
+    10 00000229 [00000000]          <3>
+    11 0000022D FEC8                <3>  dec al
+    12 0000022F 486BC007            <3>  imul rax, %3
+    13 00000233 480FB61C25-         <3>  movzx rbx, BYTE [%2]
+    13 00000238 [01000000]          <3>
+    14 0000023C 4801D8              <3>  add rax, rbx
+    15 0000023F FEC8                <3>  dec al
+    89 00000241 488990[65000000]    <2>  mov [%2 + rax], rdx
+    90                              <2> 
+    91 00000248 FE0425[01000000]    <2>  inc BYTE [j]
+    92 0000024F EB9A                <2>  jmp %%inicio
+    93                              <2> 
+    94                              <2> %%cambioFila:
+    95 00000251 FE0425[00000000]    <2>  inc BYTE [i]
+    96 00000258 C60425[01000000]01  <2>  mov BYTE [j], 1
+    97 00000260 EB89                <2>  jmp %%inicio
+    98                              <2> %%aca:
+   328                              <1>  tablero_vertical tablero_rotacion_derecha,tablero
+   249 00000262 BF00000000          <2>  mov rdi, 0
+   250 00000267 BE30000000          <2>  mov rsi, 48
+   251                              <2> %%espejo:
+   252 0000026C 4839F7              <2>  cmp rdi, rsi
+   253 0000026F 7F20                <2>  jg %%fin_tablero_espejo
+   254 00000271 8A87[65000000]      <2>  mov al, [%1 + rdi]
+   255 00000277 8A96[65000000]      <2>  mov dl, [%1 + rsi]
+   256                              <2> 
+   257 0000027D 8897[03000000]      <2>  mov [%2 + rdi], dl
+   258 00000283 8886[03000000]      <2>  mov [%2 + rsi], al
+   259                              <2> 
+   260 00000289 48FFC7              <2>  inc rdi
+   261 0000028C 48FFCE              <2>  dec rsi
+   262 0000028F EBDB                <2>  jmp %%espejo
+   263                              <2> 
+   264                              <2> %%fin_tablero_espejo:
+   329 00000291 EB00                <1>  jmp %%fin
+   330                              <1> %%fin:
+   331                              <1> 
+   353                                          limpiar
+   285 00000293 48BF-               <1>  mov rdi, cmd_clear
+   285 00000295 [6803000000000000]  <1>
+   286 0000029D 4883EC08            <1>  sub rsp, 8
+   287 000002A1 E8(00000000)        <1>  call system
+   288 000002A6 4883C408            <1>  add rsp, 8
+   354                                          imprimir_matriz         tablero
+   103 000002AA C60425[00000000]01  <1>  mov BYTE [i], 1
+   104 000002B2 C60425[01000000]01  <1>  mov BYTE [j], 1
    105                              <1>  imprimir_opcion linea_arriba
-   138 000003BD 48BF-               <2>  mov rdi,%1
-   138 000003BF [0000000000000000]  <2>
-   139 000003C7 4883EC08            <2>  sub rsp, 8
-   140 000003CB E8(00000000)        <2>  call puts
-   141 000003D0 4883C408            <2>  add rsp, 8
+   138 000002BA 48BF-               <2>  mov rdi,%1
+   138 000002BC [0000000000000000]  <2>
+   139 000002C4 4883EC08            <2>  sub rsp, 8
+   140 000002C8 E8(00000000)        <2>  call puts
+   141 000002CD 4883C408            <2>  add rsp, 8
    106                              <1>  imprimir linea_vertical
-   144 000003D4 48BF-               <2>  mov rdi,%1
-   144 000003D6 [E400000000000000]  <2>
-   145 000003DE 4883EC08            <2>  sub rsp, 8
-   146 000003E2 E8(00000000)        <2>  call printf
-   147 000003E7 4883C408            <2>  add rsp, 8
+   144 000002D1 48BF-               <2>  mov rdi,%1
+   144 000002D3 [E400000000000000]  <2>
+   145 000002DB 4883EC08            <2>  sub rsp, 8
+   146 000002DF E8(00000000)        <2>  call printf
+   147 000002E4 4883C408            <2>  add rsp, 8
    107                              <1> 
    108                              <1> %%inicio:
-   109 000003EB 803C25[00000000]07  <1>  cmp BYTE [i], CANT_FIL
-   110 000003F3 0F8FAB000000        <1>  jg %%fin
-   111 000003F9 803C25[01000000]07  <1>  cmp BYTE [j], CANT_COL
-   112 00000401 7F48                <1>  jg %%cambioFila
+   109 000002E8 803C25[00000000]07  <1>  cmp BYTE [i], CANT_FIL
+   110 000002F0 0F8FAB000000        <1>  jg %%fin
+   111 000002F6 803C25[01000000]07  <1>  cmp BYTE [j], CANT_COL
+   112 000002FE 7F48                <1>  jg %%cambioFila
    113                              <1>  calcular_direccion_de_una_posicion i,j,CANT_COL
-    10 00000403 480FB60425-         <2>  movzx rax, BYTE [%1]
-    10 00000408 [00000000]          <2>
-    11 0000040C FEC8                <2>  dec al
-    12 0000040E 486BC007            <2>  imul rax, %3
-    13 00000412 480FB61C25-         <2>  movzx rbx, BYTE [%2]
-    13 00000417 [01000000]          <2>
-    14 0000041B 4801D8              <2>  add rax, rbx
-    15 0000041E FEC8                <2>  dec al
+    10 00000300 480FB60425-         <2>  movzx rax, BYTE [%1]
+    10 00000305 [00000000]          <2>
+    11 00000309 FEC8                <2>  dec al
+    12 0000030B 486BC007            <2>  imul rax, %3
+    13 0000030F 480FB61C25-         <2>  movzx rbx, BYTE [%2]
+    13 00000314 [01000000]          <2>
+    14 00000318 4801D8              <2>  add rax, rbx
+    15 0000031B FEC8                <2>  dec al
    114                              <1> 
-   115 00000420 480FB690[03000000]  <1>  movzx rdx, BYTE [%1 + rax]
+   115 0000031D 480FB690[03000000]  <1>  movzx rdx, BYTE [%1 + rax]
    116                              <1> 
-   117 00000428 4883EC08            <1>  sub rsp, 8
-   118 0000042C 48BF-               <1>  mov rdi, formato
-   118 0000042E [E900000000000000]  <1>
-   119 00000436 4889D6              <1>  mov rsi, rdx
-   120 00000439 E8(00000000)        <1>  call printf
-   121 0000043E 4883C408            <1>  add rsp, 8
+   117 00000325 4883EC08            <1>  sub rsp, 8
+   118 00000329 48BF-               <1>  mov rdi, formato
+   118 0000032B [E900000000000000]  <1>
+   119 00000333 4889D6              <1>  mov rsi, rdx
+   120 00000336 E8(00000000)        <1>  call printf
+   121 0000033B 4883C408            <1>  add rsp, 8
    122                              <1> 
-   123 00000442 FE0425[01000000]    <1>  inc BYTE [j]
-   124 00000449 EBA0                <1>  jmp %%inicio
+   123 0000033F FE0425[01000000]    <1>  inc BYTE [j]
+   124 00000346 EBA0                <1>  jmp %%inicio
    125                              <1> 
    126                              <1> %%cambioFila:
    127                              <1>  imprimir linea_vertical
-   144 0000044B 48BF-               <2>  mov rdi,%1
-   144 0000044D [E400000000000000]  <2>
-   145 00000455 4883EC08            <2>  sub rsp, 8
-   146 00000459 E8(00000000)        <2>  call printf
-   147 0000045E 4883C408            <2>  add rsp, 8
+   144 00000348 48BF-               <2>  mov rdi,%1
+   144 0000034A [E400000000000000]  <2>
+   145 00000352 4883EC08            <2>  sub rsp, 8
+   146 00000356 E8(00000000)        <2>  call printf
+   147 0000035B 4883C408            <2>  add rsp, 8
    128                              <1>  imprimir saltoLinea
-   144 00000462 48BF-               <2>  mov rdi,%1
-   144 00000464 [F000000000000000]  <2>
-   145 0000046C 4883EC08            <2>  sub rsp, 8
-   146 00000470 E8(00000000)        <2>  call printf
-   147 00000475 4883C408            <2>  add rsp, 8
+   144 0000035F 48BF-               <2>  mov rdi,%1
+   144 00000361 [F000000000000000]  <2>
+   145 00000369 4883EC08            <2>  sub rsp, 8
+   146 0000036D E8(00000000)        <2>  call printf
+   147 00000372 4883C408            <2>  add rsp, 8
    129                              <1>  imprimir linea_vertical
-   144 00000479 48BF-               <2>  mov rdi,%1
-   144 0000047B [E400000000000000]  <2>
-   145 00000483 4883EC08            <2>  sub rsp, 8
-   146 00000487 E8(00000000)        <2>  call printf
-   147 0000048C 4883C408            <2>  add rsp, 8
+   144 00000376 48BF-               <2>  mov rdi,%1
+   144 00000378 [E400000000000000]  <2>
+   145 00000380 4883EC08            <2>  sub rsp, 8
+   146 00000384 E8(00000000)        <2>  call printf
+   147 00000389 4883C408            <2>  add rsp, 8
    130                              <1> 
-   131 00000490 FE0425[00000000]    <1>  inc BYTE [i]
-   132 00000497 C60425[01000000]01  <1>  mov BYTE [j], 1
-   133 0000049F E947FFFFFF          <1>  jmp %%inicio
+   131 0000038D FE0425[00000000]    <1>  inc BYTE [i]
+   132 00000394 C60425[01000000]01  <1>  mov BYTE [j], 1
+   133 0000039C E947FFFFFF          <1>  jmp %%inicio
    134                              <1> %%fin:
    135                              <1>  imprimir_opcion linea_abajo
-   138 000004A4 48BF-               <2>  mov rdi,%1
-   138 000004A6 [7400000000000000]  <2>
-   139 000004AE 4883EC08            <2>  sub rsp, 8
-   140 000004B2 E8(00000000)        <2>  call puts
-   141 000004B7 4883C408            <2>  add rsp, 8
-   358                                  inicio_juego:
-   359                                  
-   360                                          ;imprimir_matriz         tablero
-   361                                  
-   362                                          imprimir_opcion      cadena_pedir
-   138 000004BB 48BF-               <1>  mov rdi,%1
-   138 000004BD [2301000000000000]  <1>
-   139 000004C5 4883EC08            <1>  sub rsp, 8
-   140 000004C9 E8(00000000)        <1>  call puts
-   141 000004CE 4883C408            <1>  add rsp, 8
-   363                                          imprimir_pos_validas    7,3       ; bucas las posiciones validas para las coordenadas (x,y) en este cado (7,3)
+   138 000003A1 48BF-               <2>  mov rdi,%1
+   138 000003A3 [7400000000000000]  <2>
+   139 000003AB 4883EC08            <2>  sub rsp, 8
+   140 000003AF E8(00000000)        <2>  call puts
+   141 000003B4 4883C408            <2>  add rsp, 8
+   355                                  inicio_juego:
+   356                                  
+   357                                  
+   358                                          ;imprimir_opcion      cadena_pedir
+   359                                          imprimir_pos_validas    7,3       ; bucas las posiciones validas para las coordenadas (x,y) en este cado (7,3)
    151                              <1>  imprimir_opcion opcion_salir
-   138 000004D2 48BF-               <2>  mov rdi,%1
-   138 000004D4 [0002000000000000]  <2>
-   139 000004DC 4883EC08            <2>  sub rsp, 8
-   140 000004E0 E8(00000000)        <2>  call puts
-   141 000004E5 4883C408            <2>  add rsp, 8
-   152 000004E9 C60425[00000000]FF  <1>  mov BYTE [i], -1
-   153 000004F1 C60425[01000000]FF  <1>  mov BYTE [j], -1
-   154 000004F9 41B407              <1>  mov r12B, %1
-   155 000004FC 41B503              <1>  mov r13B, %2
-   156 000004FF 44882425[C7000000]  <1>  mov [x], r12B
-   157 00000507 44882C25[C8000000]  <1>  mov [y], r13B
+   138 000003B8 48BF-               <2>  mov rdi,%1
+   138 000003BA [0002000000000000]  <2>
+   139 000003C2 4883EC08            <2>  sub rsp, 8
+   140 000003C6 E8(00000000)        <2>  call puts
+   141 000003CB 4883C408            <2>  add rsp, 8
+   152 000003CF C60425[00000000]FF  <1>  mov BYTE [i], -1
+   153 000003D7 C60425[01000000]FF  <1>  mov BYTE [j], -1
+   154 000003DF 41B407              <1>  mov r12B, %1
+   155 000003E2 41B503              <1>  mov r13B, %2
+   156 000003E5 44882425[C7000000]  <1>  mov [x], r12B
+   157 000003ED 44882C25[C8000000]  <1>  mov [y], r13B
    158                              <1> %%filas:
-   159 0000050F 803C25[00000000]01  <1>  cmp BYTE [i], 1
-   160 00000517 0F8FBB010000        <1>  jg %%fin
+   159 000003F5 803C25[00000000]01  <1>  cmp BYTE [i], 1
+   160 000003FD 0F8FBB010000        <1>  jg %%fin
    161                              <1> 
-   162 0000051D 44882425[C7000000]  <1>  mov [x], r12B
-   163 00000525 448A0425[00000000]  <1>  mov r8B, [i]
-   164 0000052D 44000425[C7000000]  <1>  add [x], r8B
+   162 00000403 44882425[C7000000]  <1>  mov [x], r12B
+   163 0000040B 448A0425[00000000]  <1>  mov r8B, [i]
+   164 00000413 44000425[C7000000]  <1>  add [x], r8B
    165                              <1> %%columnas:
-   166 00000535 44882C25[C8000000]  <1>  mov [y], r13B
-   167 0000053D 448A0425[01000000]  <1>  mov r8B, [j]
-   168 00000545 44000425[C8000000]  <1>  add [y], r8B
+   166 0000041B 44882C25[C8000000]  <1>  mov [y], r13B
+   167 00000423 448A0425[01000000]  <1>  mov r8B, [j]
+   168 0000042B 44000425[C8000000]  <1>  add [y], r8B
    169                              <1> 
    170                              <1>  calcular_direccion_de_una_posicion x,y,CANT_COL
-    10 0000054D 480FB60425-         <2>  movzx rax, BYTE [%1]
-    10 00000552 [C7000000]          <2>
-    11 00000556 FEC8                <2>  dec al
-    12 00000558 486BC007            <2>  imul rax, %3
-    13 0000055C 480FB61C25-         <2>  movzx rbx, BYTE [%2]
-    13 00000561 [C8000000]          <2>
-    14 00000565 4801D8              <2>  add rax, rbx
-    15 00000568 FEC8                <2>  dec al
-   171 0000056A B911000000          <1>  mov rcx, 17
+    10 00000433 480FB60425-         <2>  movzx rax, BYTE [%1]
+    10 00000438 [C7000000]          <2>
+    11 0000043C FEC8                <2>  dec al
+    12 0000043E 486BC007            <2>  imul rax, %3
+    13 00000442 480FB61C25-         <2>  movzx rbx, BYTE [%2]
+    13 00000447 [C8000000]          <2>
+    14 0000044B 4801D8              <2>  add rax, rbx
+    15 0000044E FEC8                <2>  dec al
+   171 00000450 B911000000          <1>  mov rcx, 17
    172                              <1> %%posiciones_invalidas:
-   173 0000056F 4C0FB681[6D030000]  <1>  movzx r8, BYTE [dirrecciones_invalidas+rcx]
-   174 00000577 4C39C0              <1>  cmp rax, r8
-   175 0000057A 7411                <1>  je %%continuar
-   176 0000057C E2F1                <1>  loop %%posiciones_invalidas
+   173 00000455 4C0FB681[6E030000]  <1>  movzx r8, BYTE [dirrecciones_invalidas+rcx]
+   174 0000045D 4C39C0              <1>  cmp rax, r8
+   175 00000460 7411                <1>  je %%continuar
+   176 00000462 E2F1                <1>  loop %%posiciones_invalidas
    177                              <1> 
-   178 0000057E 8A1425[66030000]    <1>  mov dl, [pos_vacia]
-   179 00000585 3890[F2000000]      <1>  cmp BYTE [matriz+ rax], dl
-   180 0000058B 7425                <1>  je %%pos_valida
+   178 00000464 8A1425[67030000]    <1>  mov dl, [pos_vacia]
+   179 0000046B 3890[F2000000]      <1>  cmp BYTE [matriz+ rax], dl
+   180 00000471 7425                <1>  je %%pos_valida
    181                              <1> %%continuar:
-   182 0000058D FE0425[01000000]    <1>  inc BYTE [j]
-   183 00000594 803C25[01000000]01  <1>  cmp BYTE [j], 1
-   184 0000059C 7E97                <1>  jle %%columnas
-   185 0000059E FE0425[00000000]    <1>  inc BYTE [i]
-   186 000005A5 C60425[01000000]FF  <1>  mov BYTE [j], -1
-   187 000005AD E95DFFFFFF          <1>  jmp %%filas
+   182 00000473 FE0425[01000000]    <1>  inc BYTE [j]
+   183 0000047A 803C25[01000000]01  <1>  cmp BYTE [j], 1
+   184 00000482 7E97                <1>  jle %%columnas
+   185 00000484 FE0425[00000000]    <1>  inc BYTE [i]
+   186 0000048B C60425[01000000]FF  <1>  mov BYTE [j], -1
+   187 00000493 E95DFFFFFF          <1>  jmp %%filas
    188                              <1> 
    189                              <1> 
    190                              <1> %%pos_valida:
-   191 000005B2 44382425[C7000000]  <1>  cmp [x], r12B
-   192 000005BA 7C22                <1>  jl %%fila_menor
-   193 000005BC 7410                <1>  je %%fila_igual
-   194 000005BE 7F00                <1>  jg %%fila_mayor
+   191 00000498 44382425[C7000000]  <1>  cmp [x], r12B
+   192 000004A0 7C22                <1>  jl %%fila_menor
+   193 000004A2 7410                <1>  je %%fila_igual
+   194 000004A4 7F00                <1>  jg %%fila_mayor
    195                              <1> 
    196                              <1> %%fila_mayor:
-   197 000005C0 44382C25[C8000000]  <1>  cmp [y], r13B
-   198 000005C8 7F2E                <1>  jg %%poner_inf_derecha
-   199 000005CA 7448                <1>  je %%poner_inf_abajo
-   200 000005CC 7C62                <1>  jl %%poner_inf_izquierda
+   197 000004A6 44382C25[C8000000]  <1>  cmp [y], r13B
+   198 000004AE 7F2E                <1>  jg %%poner_inf_derecha
+   199 000004B0 7448                <1>  je %%poner_inf_abajo
+   200 000004B2 7C62                <1>  jl %%poner_inf_izquierda
    201                              <1> 
    202                              <1> %%fila_igual:
-   203 000005CE 44382C25[C8000000]  <1>  cmp [y], r13B
-   204 000005D6 0F8C8C000000        <1>  jl %%poner_izquierda
-   205 000005DC 7F6E                <1>  jg %%poner_derecha
+   203 000004B4 44382C25[C8000000]  <1>  cmp [y], r13B
+   204 000004BC 0F8C8C000000        <1>  jl %%poner_izquierda
+   205 000004C2 7F6E                <1>  jg %%poner_derecha
    206                              <1> 
    207                              <1> %%fila_menor:
-   208 000005DE 44382C25[C8000000]  <1>  cmp [y], r13B
-   209 000005E6 0F8FD0000000        <1>  jg %%poner_sup_derecha
-   210 000005EC 0F84AE000000        <1>  je %%poner_sup_arriba
-   211 000005F2 0F8C8C000000        <1>  jl %%poner_sup_izquierda
+   208 000004C4 44382C25[C8000000]  <1>  cmp [y], r13B
+   209 000004CC 0F8FD0000000        <1>  jg %%poner_sup_derecha
+   210 000004D2 0F84AE000000        <1>  je %%poner_sup_arriba
+   211 000004D8 0F8C8C000000        <1>  jl %%poner_sup_izquierda
    212                              <1> 
    213                              <1> %%poner_inf_derecha:
    214                              <1>  imprimir_opcion opcion_inf_derecha
-   138 000005F8 48BF-               <2>  mov rdi,%1
-   138 000005FA [C102000000000000]  <2>
-   139 00000602 4883EC08            <2>  sub rsp, 8
-   140 00000606 E8(00000000)        <2>  call puts
-   141 0000060B 4883C408            <2>  add rsp, 8
-   215 0000060F E979FFFFFF          <1>  jmp %%continuar
+   138 000004DE 48BF-               <2>  mov rdi,%1
+   138 000004E0 [C102000000000000]  <2>
+   139 000004E8 4883EC08            <2>  sub rsp, 8
+   140 000004EC E8(00000000)        <2>  call puts
+   141 000004F1 4883C408            <2>  add rsp, 8
+   215 000004F5 E979FFFFFF          <1>  jmp %%continuar
    216                              <1> %%poner_inf_abajo:
    217                              <1>  imprimir_opcion opcion_abajo
-   138 00000614 48BF-               <2>  mov rdi,%1
-   138 00000616 [2D02000000000000]  <2>
-   139 0000061E 4883EC08            <2>  sub rsp, 8
-   140 00000622 E8(00000000)        <2>  call puts
-   141 00000627 4883C408            <2>  add rsp, 8
-   218 0000062B E95DFFFFFF          <1>  jmp %%continuar
+   138 000004FA 48BF-               <2>  mov rdi,%1
+   138 000004FC [2D02000000000000]  <2>
+   139 00000504 4883EC08            <2>  sub rsp, 8
+   140 00000508 E8(00000000)        <2>  call puts
+   141 0000050D 4883C408            <2>  add rsp, 8
+   218 00000511 E95DFFFFFF          <1>  jmp %%continuar
    219                              <1> 
    220                              <1> %%poner_inf_izquierda:
    221                              <1>  imprimir_opcion opcion_inf_izquierda
-   138 00000630 48BF-               <2>  mov rdi,%1
-   138 00000632 [8D02000000000000]  <2>
-   139 0000063A 4883EC08            <2>  sub rsp, 8
-   140 0000063E E8(00000000)        <2>  call puts
-   141 00000643 4883C408            <2>  add rsp, 8
-   222 00000647 E941FFFFFF          <1>  jmp %%continuar
+   138 00000516 48BF-               <2>  mov rdi,%1
+   138 00000518 [8D02000000000000]  <2>
+   139 00000520 4883EC08            <2>  sub rsp, 8
+   140 00000524 E8(00000000)        <2>  call puts
+   141 00000529 4883C408            <2>  add rsp, 8
+   222 0000052D E941FFFFFF          <1>  jmp %%continuar
    223                              <1> 
    224                              <1> %%poner_derecha:
    225                              <1>  imprimir_opcion opcion_derecha
-   138 0000064C 48BF-               <2>  mov rdi,%1
-   138 0000064E [4802000000000000]  <2>
-   139 00000656 4883EC08            <2>  sub rsp, 8
-   140 0000065A E8(00000000)        <2>  call puts
-   141 0000065F 4883C408            <2>  add rsp, 8
-   226 00000663 E925FFFFFF          <1>  jmp %%continuar
+   138 00000532 48BF-               <2>  mov rdi,%1
+   138 00000534 [4802000000000000]  <2>
+   139 0000053C 4883EC08            <2>  sub rsp, 8
+   140 00000540 E8(00000000)        <2>  call puts
+   141 00000545 4883C408            <2>  add rsp, 8
+   226 00000549 E925FFFFFF          <1>  jmp %%continuar
    227                              <1> 
    228                              <1> %%poner_izquierda:
    229                              <1>  imprimir_opcion opcion_izquierda
-   138 00000668 48BF-               <2>  mov rdi,%1
-   138 0000066A [6902000000000000]  <2>
-   139 00000672 4883EC08            <2>  sub rsp, 8
-   140 00000676 E8(00000000)        <2>  call puts
-   141 0000067B 4883C408            <2>  add rsp, 8
-   230 0000067F E909FFFFFF          <1>  jmp %%continuar
+   138 0000054E 48BF-               <2>  mov rdi,%1
+   138 00000550 [6902000000000000]  <2>
+   139 00000558 4883EC08            <2>  sub rsp, 8
+   140 0000055C E8(00000000)        <2>  call puts
+   141 00000561 4883C408            <2>  add rsp, 8
+   230 00000565 E909FFFFFF          <1>  jmp %%continuar
    231                              <1> 
    232                              <1> %%poner_sup_izquierda:
    233                              <1>  imprimir_opcion opcion_sup_izquierda
-   138 00000684 48BF-               <2>  mov rdi,%1
-   138 00000686 [2B03000000000000]  <2>
-   139 0000068E 4883EC08            <2>  sub rsp, 8
-   140 00000692 E8(00000000)        <2>  call puts
-   141 00000697 4883C408            <2>  add rsp, 8
-   234 0000069B E9EDFEFFFF          <1>  jmp %%continuar
+   138 0000056A 48BF-               <2>  mov rdi,%1
+   138 0000056C [2B03000000000000]  <2>
+   139 00000574 4883EC08            <2>  sub rsp, 8
+   140 00000578 E8(00000000)        <2>  call puts
+   141 0000057D 4883C408            <2>  add rsp, 8
+   234 00000581 E9EDFEFFFF          <1>  jmp %%continuar
    235                              <1> 
    236                              <1> %%poner_sup_arriba:
    237                              <1>  imprimir_opcion opcion_arriba
-   138 000006A0 48BF-               <2>  mov rdi,%1
-   138 000006A2 [1202000000000000]  <2>
-   139 000006AA 4883EC08            <2>  sub rsp, 8
-   140 000006AE E8(00000000)        <2>  call puts
-   141 000006B3 4883C408            <2>  add rsp, 8
-   238 000006B7 E9D1FEFFFF          <1>  jmp %%continuar
+   138 00000586 48BF-               <2>  mov rdi,%1
+   138 00000588 [1202000000000000]  <2>
+   139 00000590 4883EC08            <2>  sub rsp, 8
+   140 00000594 E8(00000000)        <2>  call puts
+   141 00000599 4883C408            <2>  add rsp, 8
+   238 0000059D E9D1FEFFFF          <1>  jmp %%continuar
    239                              <1> 
    240                              <1> %%poner_sup_derecha:
    241                              <1>  imprimir_opcion opcion_sup_derecha
-   138 000006BC 48BF-               <2>  mov rdi,%1
-   138 000006BE [F702000000000000]  <2>
-   139 000006C6 4883EC08            <2>  sub rsp, 8
-   140 000006CA E8(00000000)        <2>  call puts
-   141 000006CF 4883C408            <2>  add rsp, 8
-   242 000006D3 E9B5FEFFFF          <1>  jmp %%continuar
+   138 000005A2 48BF-               <2>  mov rdi,%1
+   138 000005A4 [F702000000000000]  <2>
+   139 000005AC 4883EC08            <2>  sub rsp, 8
+   140 000005B0 E8(00000000)        <2>  call puts
+   141 000005B5 4883C408            <2>  add rsp, 8
+   242 000005B9 E9B5FEFFFF          <1>  jmp %%continuar
    243                              <1> 
    244                              <1> %%fin:
-   364                                  
-   365                                          leer_entrada      
-   340 000006D8 4883EC08            <1>  sub rsp, 8
-   341 000006DC 48BF-               <1>  mov rdi, formato_Caracter
-   341 000006DE [6103000000000000]  <1>
-   342 000006E6 48BE-               <1>  mov rsi, opcion_ingresada
-   342 000006E8 [0200000000000000]  <1>
-   343 000006F0 E8(00000000)        <1>  call scanf
-   344 000006F5 4883C408            <1>  add rsp, 8
-   366                                          ejecutar_intruccion     opcion_ingresada
-   292                              <1> 
-   293 000006F9 B068                <1>  mov al, 104
-   294 000006FB 8A1C25[02000000]    <1>  mov bl, [opcion_ingresada]
-   295 00000702 38D8                <1>  cmp al, bl
-   296 00000704 0F8408030000        <1>  je final_juego
-   297                              <1> 
-   298 0000070A B031                <1>  mov al, 49
-   299 0000070C 8A1C25[02000000]    <1>  mov bl, [opcion_ingresada]
-   300 00000713 38D8                <1>  cmp al, bl
-   301 00000715 742F                <1>  je %%arriba
-   302                              <1> 
-   303 00000717 B032                <1>  mov al, 50
-   304 00000719 8A1C25[02000000]    <1>  mov bl, [opcion_ingresada]
-   305 00000720 38D8                <1>  cmp al, bl
-   306 00000722 0F8416020000        <1>  je %%izquierda
-   307                              <1> 
-   308 00000728 B033                <1>  mov al, 51
-   309 0000072A 8A1C25[02000000]    <1>  mov bl, [opcion_ingresada]
-   310 00000731 38D8                <1>  cmp al, bl
-   311 00000733 7432                <1>  je %%derecha
-   312                              <1> 
-   313 00000735 B034                <1>  mov al, 52
-   314 00000737 8A1C25[02000000]    <1>  mov bl, [opcion_ingresada]
-   315 0000073E 38D8                <1>  cmp al, bl
-   316 00000740 0F84C9000000        <1>  je %%abajo
-   317                              <1> %%arriba:
-   318                              <1>  copiar_matriz matriz
-   274 00000746 B900000000          <2>  mov rcx, 0
-   275                              <2> %%inicio:
-   276 0000074B 4883F931            <2>  cmp rcx, 49
-   277 0000074F 7F11                <2>  jg %%fin
-   278 00000751 8A81[F2000000]      <2>  mov al, [%1+ rcx]
-   279 00000757 8881[03000000]      <2>  mov [tablero+rcx], al
-   280 0000075D 48FFC1              <2>  inc rcx
-   281 00000760 EBE9                <2>  jmp %%inicio
-   282                              <2> %%fin:
-   319 00000762 E9AB020000          <1>  jmp %%fin
-   320                              <1> %%derecha:
-   321                              <1>  rotar_derecha matriz, tablero_rotacion_derecha
-    76 00000767 C60425[00000000]01  <2>  mov BYTE [i], 1
-    77 0000076F C60425[01000000]01  <2>  mov BYTE [j], 1
-    78                              <2> %%inicio:
-    79 00000777 803C25[00000000]07  <2>  cmp BYTE [i], CANT_FIL
-    80 0000077F 7F6D                <2>  jg %%aca
-    81                              <2> 
-    82 00000781 803C25[01000000]07  <2>  cmp BYTE [j], CANT_COL
-    83 00000789 7F52                <2>  jg %%cambioFila
-    84                              <2> 
-    85                              <2>  calcular_direccion_de_una_posicion j,i,CANT_COL
-    10 0000078B 480FB60425-         <3>  movzx rax, BYTE [%1]
-    10 00000790 [01000000]          <3>
-    11 00000794 FEC8                <3>  dec al
-    12 00000796 486BC007            <3>  imul rax, %3
-    13 0000079A 480FB61C25-         <3>  movzx rbx, BYTE [%2]
-    13 0000079F [00000000]          <3>
-    14 000007A3 4801D8              <3>  add rax, rbx
-    15 000007A6 FEC8                <3>  dec al
-    86 000007A8 480FB690[F2000000]  <2>  movzx rdx, BYTE [%1 + rax]
-    87                              <2> 
-    88                              <2>  calcular_direccion_de_una_posicion i,j, CANT_COL
-    10 000007B0 480FB60425-         <3>  movzx rax, BYTE [%1]
-    10 000007B5 [00000000]          <3>
-    11 000007B9 FEC8                <3>  dec al
-    12 000007BB 486BC007            <3>  imul rax, %3
-    13 000007BF 480FB61C25-         <3>  movzx rbx, BYTE [%2]
-    13 000007C4 [01000000]          <3>
-    14 000007C8 4801D8              <3>  add rax, rbx
-    15 000007CB FEC8                <3>  dec al
-    89 000007CD 488990[65000000]    <2>  mov [%2 + rax], rdx
-    90                              <2> 
-    91 000007D4 FE0425[01000000]    <2>  inc BYTE [j]
-    92 000007DB EB9A                <2>  jmp %%inicio
-    93                              <2> 
-    94                              <2> %%cambioFila:
-    95 000007DD FE0425[00000000]    <2>  inc BYTE [i]
-    96 000007E4 C60425[01000000]01  <2>  mov BYTE [j], 1
-    97 000007EC EB89                <2>  jmp %%inicio
-    98                              <2> %%aca:
-   322                              <1>  copiar_matriz tablero_rotacion_derecha
-   274 000007EE B900000000          <2>  mov rcx, 0
-   275                              <2> %%inicio:
-   276 000007F3 4883F931            <2>  cmp rcx, 49
-   277 000007F7 7F11                <2>  jg %%fin
-   278 000007F9 8A81[65000000]      <2>  mov al, [%1+ rcx]
-   279 000007FF 8881[03000000]      <2>  mov [tablero+rcx], al
-   280 00000805 48FFC1              <2>  inc rcx
-   281 00000808 EBE9                <2>  jmp %%inicio
-   282                              <2> %%fin:
-   323 0000080A E903020000          <1>  jmp %%fin
-   324                              <1> %%abajo:
-   325                              <1>  rotar_derecha matriz, tablero_rotacion_derecha
-    76 0000080F C60425[00000000]01  <2>  mov BYTE [i], 1
-    77 00000817 C60425[01000000]01  <2>  mov BYTE [j], 1
-    78                              <2> %%inicio:
-    79 0000081F 803C25[00000000]07  <2>  cmp BYTE [i], CANT_FIL
-    80 00000827 7F6D                <2>  jg %%aca
-    81                              <2> 
-    82 00000829 803C25[01000000]07  <2>  cmp BYTE [j], CANT_COL
-    83 00000831 7F52                <2>  jg %%cambioFila
-    84                              <2> 
-    85                              <2>  calcular_direccion_de_una_posicion j,i,CANT_COL
-    10 00000833 480FB60425-         <3>  movzx rax, BYTE [%1]
-    10 00000838 [01000000]          <3>
-    11 0000083C FEC8                <3>  dec al
-    12 0000083E 486BC007            <3>  imul rax, %3
-    13 00000842 480FB61C25-         <3>  movzx rbx, BYTE [%2]
-    13 00000847 [00000000]          <3>
-    14 0000084B 4801D8              <3>  add rax, rbx
-    15 0000084E FEC8                <3>  dec al
-    86 00000850 480FB690[F2000000]  <2>  movzx rdx, BYTE [%1 + rax]
-    87                              <2> 
-    88                              <2>  calcular_direccion_de_una_posicion i,j, CANT_COL
-    10 00000858 480FB60425-         <3>  movzx rax, BYTE [%1]
-    10 0000085D [00000000]          <3>
-    11 00000861 FEC8                <3>  dec al
-    12 00000863 486BC007            <3>  imul rax, %3
-    13 00000867 480FB61C25-         <3>  movzx rbx, BYTE [%2]
-    13 0000086C [01000000]          <3>
-    14 00000870 4801D8              <3>  add rax, rbx
-    15 00000873 FEC8                <3>  dec al
-    89 00000875 488990[65000000]    <2>  mov [%2 + rax], rdx
-    90                              <2> 
-    91 0000087C FE0425[01000000]    <2>  inc BYTE [j]
-    92 00000883 EB9A                <2>  jmp %%inicio
-    93                              <2> 
-    94                              <2> %%cambioFila:
-    95 00000885 FE0425[00000000]    <2>  inc BYTE [i]
-    96 0000088C C60425[01000000]01  <2>  mov BYTE [j], 1
-    97 00000894 EB89                <2>  jmp %%inicio
-    98                              <2> %%aca:
-   326                              <1>  rotar_derecha tablero_rotacion_derecha,tablero_espejo
-    76 00000896 C60425[00000000]01  <2>  mov BYTE [i], 1
-    77 0000089E C60425[01000000]01  <2>  mov BYTE [j], 1
-    78                              <2> %%inicio:
-    79 000008A6 803C25[00000000]07  <2>  cmp BYTE [i], CANT_FIL
-    80 000008AE 7F6D                <2>  jg %%aca
-    81                              <2> 
-    82 000008B0 803C25[01000000]07  <2>  cmp BYTE [j], CANT_COL
-    83 000008B8 7F52                <2>  jg %%cambioFila
-    84                              <2> 
-    85                              <2>  calcular_direccion_de_una_posicion j,i,CANT_COL
-    10 000008BA 480FB60425-         <3>  movzx rax, BYTE [%1]
-    10 000008BF [01000000]          <3>
-    11 000008C3 FEC8                <3>  dec al
-    12 000008C5 486BC007            <3>  imul rax, %3
-    13 000008C9 480FB61C25-         <3>  movzx rbx, BYTE [%2]
-    13 000008CE [00000000]          <3>
-    14 000008D2 4801D8              <3>  add rax, rbx
-    15 000008D5 FEC8                <3>  dec al
-    86 000008D7 480FB690[65000000]  <2>  movzx rdx, BYTE [%1 + rax]
-    87                              <2> 
-    88                              <2>  calcular_direccion_de_una_posicion i,j, CANT_COL
-    10 000008DF 480FB60425-         <3>  movzx rax, BYTE [%1]
-    10 000008E4 [00000000]          <3>
-    11 000008E8 FEC8                <3>  dec al
-    12 000008EA 486BC007            <3>  imul rax, %3
-    13 000008EE 480FB61C25-         <3>  movzx rbx, BYTE [%2]
-    13 000008F3 [01000000]          <3>
-    14 000008F7 4801D8              <3>  add rax, rbx
-    15 000008FA FEC8                <3>  dec al
-    89 000008FC 488990[34000000]    <2>  mov [%2 + rax], rdx
-    90                              <2> 
-    91 00000903 FE0425[01000000]    <2>  inc BYTE [j]
-    92 0000090A EB9A                <2>  jmp %%inicio
-    93                              <2> 
-    94                              <2> %%cambioFila:
-    95 0000090C FE0425[00000000]    <2>  inc BYTE [i]
-    96 00000913 C60425[01000000]01  <2>  mov BYTE [j], 1
-    97 0000091B EB89                <2>  jmp %%inicio
-    98                              <2> %%aca:
-   327                              <1>  copiar_matriz tablero_espejo
-   274 0000091D B900000000          <2>  mov rcx, 0
-   275                              <2> %%inicio:
-   276 00000922 4883F931            <2>  cmp rcx, 49
-   277 00000926 7F11                <2>  jg %%fin
-   278 00000928 8A81[34000000]      <2>  mov al, [%1+ rcx]
-   279 0000092E 8881[03000000]      <2>  mov [tablero+rcx], al
-   280 00000934 48FFC1              <2>  inc rcx
-   281 00000937 EBE9                <2>  jmp %%inicio
-   282                              <2> %%fin:
-   328 00000939 E9D4000000          <1>  jmp %%fin
-   329                              <1> %%izquierda:
-   330                              <1>  rotar_derecha matriz, tablero_rotacion_derecha
-    76 0000093E C60425[00000000]01  <2>  mov BYTE [i], 1
-    77 00000946 C60425[01000000]01  <2>  mov BYTE [j], 1
-    78                              <2> %%inicio:
-    79 0000094E 803C25[00000000]07  <2>  cmp BYTE [i], CANT_FIL
-    80 00000956 7F6D                <2>  jg %%aca
-    81                              <2> 
-    82 00000958 803C25[01000000]07  <2>  cmp BYTE [j], CANT_COL
-    83 00000960 7F52                <2>  jg %%cambioFila
-    84                              <2> 
-    85                              <2>  calcular_direccion_de_una_posicion j,i,CANT_COL
-    10 00000962 480FB60425-         <3>  movzx rax, BYTE [%1]
-    10 00000967 [01000000]          <3>
-    11 0000096B FEC8                <3>  dec al
-    12 0000096D 486BC007            <3>  imul rax, %3
-    13 00000971 480FB61C25-         <3>  movzx rbx, BYTE [%2]
-    13 00000976 [00000000]          <3>
-    14 0000097A 4801D8              <3>  add rax, rbx
-    15 0000097D FEC8                <3>  dec al
-    86 0000097F 480FB690[F2000000]  <2>  movzx rdx, BYTE [%1 + rax]
-    87                              <2> 
-    88                              <2>  calcular_direccion_de_una_posicion i,j, CANT_COL
-    10 00000987 480FB60425-         <3>  movzx rax, BYTE [%1]
-    10 0000098C [00000000]          <3>
-    11 00000990 FEC8                <3>  dec al
-    12 00000992 486BC007            <3>  imul rax, %3
-    13 00000996 480FB61C25-         <3>  movzx rbx, BYTE [%2]
-    13 0000099B [01000000]          <3>
-    14 0000099F 4801D8              <3>  add rax, rbx
-    15 000009A2 FEC8                <3>  dec al
-    89 000009A4 488990[65000000]    <2>  mov [%2 + rax], rdx
-    90                              <2> 
-    91 000009AB FE0425[01000000]    <2>  inc BYTE [j]
-    92 000009B2 EB9A                <2>  jmp %%inicio
-    93                              <2> 
-    94                              <2> %%cambioFila:
-    95 000009B4 FE0425[00000000]    <2>  inc BYTE [i]
-    96 000009BB C60425[01000000]01  <2>  mov BYTE [j], 1
-    97 000009C3 EB89                <2>  jmp %%inicio
-    98                              <2> %%aca:
-   331                              <1>  tablero_vertical tablero_rotacion_derecha
-   249 000009C5 BF00000000          <2>  mov rdi, 0
-   250 000009CA BE30000000          <2>  mov rsi, 48
-   251                              <2> %%espejo:
-   252 000009CF 4839F7              <2>  cmp rdi, rsi
-   253 000009D2 7F20                <2>  jg %%fin_tablero_espejo
-   254 000009D4 8A87[65000000]      <2>  mov al, [%1 + rdi]
-   255 000009DA 8A96[65000000]      <2>  mov dl, [%1 + rsi]
-   256                              <2> 
-   257 000009E0 8897[34000000]      <2>  mov [tablero_espejo + rdi], dl
-   258 000009E6 8886[34000000]      <2>  mov [tablero_espejo + rsi], al
-   259                              <2> 
-   260 000009EC 48FFC7              <2>  inc rdi
-   261 000009EF 48FFCE              <2>  dec rsi
-   262 000009F2 EBDB                <2>  jmp %%espejo
-   263                              <2> 
-   264                              <2> %%fin_tablero_espejo:
-   332                              <1>  copiar_matriz tablero_espejo
-   274 000009F4 B900000000          <2>  mov rcx, 0
-   275                              <2> %%inicio:
-   276 000009F9 4883F931            <2>  cmp rcx, 49
-   277 000009FD 7F11                <2>  jg %%fin
-   278 000009FF 8A81[34000000]      <2>  mov al, [%1+ rcx]
-   279 00000A05 8881[03000000]      <2>  mov [tablero+rcx], al
-   280 00000A0B 48FFC1              <2>  inc rcx
-   281 00000A0E EBE9                <2>  jmp %%inicio
-   282                              <2> %%fin:
-   333 00000A10 EB00                <1>  jmp %%fin
-   334                              <1> %%fin:
-   335                              <1> 
-   367                                  final_juego:
-   368 00000A12 C3                              ret
+   360                                  
+   361                                          ;leer_entrada      
+   362                                          ;ejecutar_intruccion     opcion_ingresada
+   363                                  final_juego:
+   364 000005BE C3                              ret
+   365                                  
+   366                                  
+   367                                  
+   368                                  
    369                                  
-   370                                  
-   371                                  
-   372                                  
-   373                                  

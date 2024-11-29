@@ -51,7 +51,7 @@ section .data
         opcion_inf_derecha      db      " 🆉  Para moverte a la diagonal inferior izquierda ",0
         opcion_sup_derecha      db      " 🅴  Para moverte a la diagonal superior derecha ",0
         opcion_sup_izquierda    db      " 🆀  Para moverte a la diagonal superior izquierda ",0
-        formato_Caracter        db      "%c",0
+        formato_Caracter        db      " %c",0
         primer_oficial          db      "O"
         segundo_oficial         db      "O"
         pos_vacia               db      "."
@@ -245,7 +245,7 @@ section .bss
 %endmacro
 
 ;voltea la matriz hacia abajo %1 matriz fuente, %2: matriz destino
-%macro tablero_vertical 1
+%macro tablero_vertical 2
         mov     rdi,    0       ;direccion inicio
         mov     rsi,    48     ;direccion final 
 %%espejo:
@@ -254,8 +254,8 @@ section .bss
         mov     al, [%1 + rdi]   ; inicio
         mov     dl, [%1 + rsi]   
 
-        mov     [tablero_espejo + rdi], dl
-        mov     [tablero_espejo + rsi], al
+        mov     [%2 + rdi], dl
+        mov     [%2 + rsi], al
 
         inc     rdi
         dec     rsi
@@ -289,47 +289,43 @@ section .bss
 %endmacro
 ;ejecuta la instruccion ingresada => %1 : opcion ingresada, %2 : opcion
 %macro ejecutar_intruccion 1
-        
-        mov     al,   104
         mov     bl,    [opcion_ingresada]
+        mov     al,   104       ; codigo h
         cmp     al,    bl
         je      final_juego             ;salir
 
-        mov     al,    49
-        mov     bl,    [opcion_ingresada]
+        mov     al,    49       ; codigo 1
         cmp     al,    bl
         je      %%arriba                ;mismo tablero
 
-        mov     al,    50
-        mov     bl,    [opcion_ingresada]
+        mov     al,    50       ;codigo 2
         cmp     al,    bl
         je      %%izquierda
 
-        mov     al,    51
-        mov     bl,    [opcion_ingresada]
+        mov     al,    51       ;codigo 3
         cmp     al,    bl
         je      %%derecha               ;rotar derecha
 
-        mov     al,    52
-        mov     bl,    [opcion_ingresada]
+        mov     al,    52       ;codigo 4
         cmp     al,    bl
         je      %%abajo                 ;rotar abajo
+        jmp     %%incorrecto
+%%incorrecto:
+        limpiar
+        imprimir_opcion        opcion_incorrecta
+        jmp     pedir_tablero
 %%arriba:
         copiar_matriz           matriz
         jmp     %%fin
 %%derecha:
-        rotar_derecha           matriz, tablero_rotacion_derecha
-        copiar_matriz           tablero_rotacion_derecha
+        rotar_derecha           matriz, tablero
         jmp     %%fin
 %%abajo:
-        rotar_derecha           matriz, tablero_rotacion_derecha
-        rotar_derecha           tablero_rotacion_derecha,tablero_espejo
-        copiar_matriz           tablero_espejo
+        tablero_vertical        matriz, tablero
         jmp     %%fin
 %%izquierda:
         rotar_derecha           matriz, tablero_rotacion_derecha
-        tablero_vertical          tablero_rotacion_derecha
-        copiar_matriz           tablero_espejo
+        tablero_vertical          tablero_rotacion_derecha,tablero
         jmp     %%fin
 %%fin:
 
@@ -354,16 +350,16 @@ pedir_tablero:
         imprimir_opcion         tablero_izquierda
         leer_entrada  
         ejecutar_intruccion     opcion_ingresada
+        limpiar
         imprimir_matriz         tablero
 inicio_juego:
 
-        ;imprimir_matriz         tablero
 
-        imprimir_opcion      cadena_pedir
+        ;imprimir_opcion      cadena_pedir
         imprimir_pos_validas    7,3       ; bucas las posiciones validas para las coordenadas (x,y) en este cado (7,3)
 
-        leer_entrada      
-        ejecutar_intruccion     opcion_ingresada
+        ;leer_entrada      
+        ;ejecutar_intruccion     opcion_ingresada
 final_juego:
         ret
 
