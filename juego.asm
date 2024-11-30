@@ -1,365 +1,453 @@
 global main
-extern printf;    imprimir_matriz formato, saltoLinea,matriz,CANT_COL,CANT_FIL,i,j
+extern printf
 extern scanf
 extern puts
 extern strcpy
 extern strcmp
-extern  system
-;cancular direccion : %1 : fil %2 :col, %3: cantidad_columnas
-%macro calcular_direccion_de_una_posicion 3
-        movzx   rax,    BYTE [%1]              ; rax = fila (ampliar a 64 bits para cálculos)
-        dec     al                          ; fila - 1
-        imul    rax,    %3                     ; (fila - 1) * CANT_COL
-        movzx   rbx,    BYTE [%2]              ; rbx = columna (ampliar a 64 bits)
-        add     rax,    rbx                    ; (fila - 1) * CANT_COL + columna
-        dec     al                          ; índice base 0
-%endmacro
+extern system
 
+; --------------------------
+; UTILS
 
-;--------------------------
-
-
-section .data
-        linea_arriba                   db      " ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓",0
-        linea_abajo                   db      "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛",0
-        linea_vertical          db      " ┃",0
-        formato                 db      '  %c  ', 0
-        saltoLinea              db      10, 0
-        matriz                  db      ' ', ' ', 'X', 'X', 'X', ' ', ' '  ; Fila 1
-                                db      ' ', ' ', 'X', 'X', 'X', ' ', ' '  ; Fila 2
-                                db      'X', 'X', 'X', 'X', 'X', 'X', 'X'  ; Fila 3
-                                db      'X', 'X', 'X', 'X', 'X', 'X', 'X'  ; Fila 4
-                                db      'X', 'X', '.', '.', '.', 'X', 'X'  ; Fila 5
-                                db      ' ', ' ', '.', '.', 'O', ' ', ' '  ; Fila 6
-                                db      ' ', ' ', 'O', '.', '.', ' ', ' '  ; Fila 7
-
-        CANT_FIL        equ     7
-        CANT_COL        equ     7
-        LONG_ELEM       equ     1
-        cadena_pedir            db      " Seleccione una opcion ",10,0
-        opcion_incorrecta       db      " La opcion ingresada en invalida",0
-        tablero_normal          db      " ➊  para un tablero normal",0
-        tablero_izquierda       db      " ➋  para un tablero rotado 90° a la izquierda ",0
-        tablero_derecha         db      " ➌  para un tablero rotado 90° a la derecha ",0
-        tablero_abajo           db      " ➍  para un tablero rotado 180° ",0
-        opcion_salir            db      " 🅷  para salir",0
-        opcion_arriba           db      " 🆆  Para moverte arriba",0
-        opcion_abajo            db      " 🆂  Para moverte abajo ",0
-        opcion_derecha          db      " 🅳  Para moverte a la derecha",0
-        opcion_izquierda        db      " 🅰  Para moverte a la izquierda ",0
-        opcion_inf_izquierda    db      " 🆇  Para moverte a la diagonal inferior derecha ",0
-        opcion_inf_derecha      db      " 🆉  Para moverte a la diagonal inferior izquierda ",0
-        opcion_sup_derecha      db      " 🅴  Para moverte a la diagonal superior derecha ",0
-        opcion_sup_izquierda    db      " 🆀  Para moverte a la diagonal superior izquierda ",0
-        formato_Caracter        db      " %c",0
-        primer_oficial          db      "O"
-        segundo_oficial         db      "O"
-        pos_vacia               db      "."
-        cmd_clear               db      "clear",0
-        dirrecciones_invalidas  db      0,1,5,6,7,8,12,13,35,36,40,41,42,43,47,48
-
-
-section .bss
-        i                               resb    1
-        j                               resb    1
-        opcion_ingresada                resb    1
-        tablero                         resb    CANT_FIL*CANT_COL ; tablero a llenar
-        tablero_espejo                  resb    CANT_FIL*CANT_COL
-        tablero_rotacion_derecha        resb    49
-        tablero_rotacion_izquierda      resb    49
-        x                               resb    1
-        y                               resb    1
-
-
-;rotar derecha =>  %1:matriz,%2:tablero_rotacion_derecha
-%macro rotar_derecha 2
-        mov     BYTE [i],      1
-        mov     BYTE [j],      1
-%%inicio:
-        cmp     BYTE [i],      CANT_FIL          
-        jg      %%aca
-
-        cmp     BYTE [j],      CANT_COL        
-        jg      %%cambioFila
-
-        calcular_direccion_de_una_posicion  j,i,CANT_COL
-        movzx   rdx, BYTE [%1 + rax]   
-
-        calcular_direccion_de_una_posicion i,j, CANT_COL
-        mov     [%2 + rax], rdx  
-
-        inc     BYTE [j]                   
-        jmp     %%inicio                     
-
-%%cambioFila:
-        inc     BYTE [i]                  
-        mov     BYTE [j],    1            
-        jmp     %%inicio
-%%aca:
-%endmacro
-
-; imprime la matriz => %1 :matriz 
-%macro imprimir_matriz 1
-        mov     BYTE [i],      1           ; Inicializar fila (1 byte)
-        mov     BYTE [j],      1           ; Inicializar columna (1 byte)
-        imprimir_opcion         linea_arriba
-        imprimir        linea_vertical
-
-%%inicio:
-        cmp     BYTE [i],      CANT_FIL          ; Verificar si se llegó al final de las filas
-        jg      %%fin
-        cmp     BYTE [j],      CANT_COL          ; Verificar si se llegó al final de las columnas
-        jg      %%cambioFila
-        calcular_direccion_de_una_posicion      i,j,CANT_COL
-
-        movzx   rdx, BYTE [%1 + rax]        ; Cargar carácter desde matriz
-        ; Imprimir el carácter
-        sub     rsp,    8
-        mov     rdi,   formato
-        mov     rsi,    rdx                    ; El carácter se pasa en rsi
-        call    printf
-        add     rsp,    8
-
-        inc     BYTE [j]
-        jmp     %%inicio
-
-%%cambioFila:
-        imprimir        linea_vertical
-        imprimir        saltoLinea
-        imprimir        linea_vertical
-
-        inc     BYTE    [i]                   ; Ir a la siguiente fila
-        mov     BYTE    [j],   1                ; Reiniciar columna
-        jmp     %%inicio
-%%fin:
-        imprimir_opcion         linea_abajo
-%endmacro
-%macro imprimir_opcion 1
+%macro mputs 1
         mov     rdi,%1       
         sub     rsp,    8 
         call    puts           
         add     rsp,    8 
 %endmacro
-%macro imprimir 1
-        mov     rdi,%1       
+
+; Props
+;  %1: formato
+;  %2: argumento
+%macro mprintf 0    
         sub     rsp,    8 
         call    printf           
         add     rsp,    8 
 %endmacro
-;imprimir pos validas para oficial=> %1 : fil,%2:col 
-%macro imprimir_pos_validas 2
-        imprimir_opcion      opcion_salir
-        mov     BYTE    [i],    -1    
-        mov     BYTE    [j],    -1      
-        mov     r12B,    %1    ;fila
-        mov     r13B,    %2      ;col
-        mov     [x],     r12B
-        mov     [y],     r13B
-%%filas:
-        cmp     BYTE    [i],    1
-        jg      %%fin             ;fin del analisis
 
-        mov     [x],     r12B
-        mov     r8B,     [i]
-        add     [x],    r8B
-%%columnas:
-        mov     [y],     r13B
-        mov     r8B,     [j]
-        add     [y],    r8B
-
-        calcular_direccion_de_una_posicion       x,y,CANT_COL    ;pos en al
-        mov     rcx,    17
-%%posiciones_invalidas:
-        movzx   r8,     BYTE [dirrecciones_invalidas+rcx]
-        cmp     rax,    r8 
-        je      %%continuar
-        loop    %%posiciones_invalidas 
-        ; la pos es valida 
-        mov     dl,    [pos_vacia]
-        cmp     BYTE    [matriz+ rax],          dl           
-        je      %%pos_valida
-%%continuar:
-        inc     BYTE    [j]
-        cmp     BYTE    [j],    1
-        jle     %%columnas        ; si j es <=1 volvemos a repetir con j+1
-        inc     BYTE    [i]
-        mov     BYTE    [j],    -1
-        jmp      %%filas           ; si j >1, incrementamos i ,y volvemos a filas
-
-
-%%pos_valida:
-        cmp     [x],    r12B
-        jl      %%fila_menor
-        je      %%fila_igual
-        jg      %%fila_mayor
-
-%%fila_mayor:
-        cmp     [y],    r13B
-        jg      %%poner_inf_derecha
-        je      %%poner_inf_abajo
-        jl      %%poner_inf_izquierda
-
-%%fila_igual:
-        cmp     [y],    r13B
-        jl      %%poner_izquierda
-        jg      %%poner_derecha
-
-%%fila_menor:
-        cmp     [y],    r13B
-        jg      %%poner_sup_derecha
-        je      %%poner_sup_arriba
-        jl      %%poner_sup_izquierda
-
-%%poner_inf_derecha:
-        imprimir_opcion     opcion_inf_derecha
-        jmp     %%continuar
-%%poner_inf_abajo:
-        imprimir_opcion     opcion_abajo
-        jmp     %%continuar
-
-%%poner_inf_izquierda:
-        imprimir_opcion     opcion_inf_izquierda
-        jmp     %%continuar
-
-%%poner_derecha:
-        imprimir_opcion     opcion_derecha
-        jmp     %%continuar
-
-%%poner_izquierda:
-        imprimir_opcion     opcion_izquierda
-        jmp     %%continuar
-
-%%poner_sup_izquierda:
-        imprimir_opcion     opcion_sup_izquierda
-        jmp     %%continuar
-
-%%poner_sup_arriba:
-        imprimir_opcion     opcion_arriba
-        jmp     %%continuar
-
-%%poner_sup_derecha:
-        imprimir_opcion     opcion_sup_derecha
-        jmp     %%continuar
-
-%%fin:
+%macro print_opcione_moviento 4
+        mov     rdi, %1  
+        movzx   rsi, byte [%2]     
+        movzx   rdx, byte [%3]     
+        movzx   rcx, byte [%4]     
+        sub     rsp,    8 
+        call    printf           
+        add     rsp,    8 
 %endmacro
 
-;voltea la matriz hacia abajo %1 matriz fuente, %2: matriz destino
-%macro tablero_vertical 2
-        mov     rdi,    0       ;direccion inicio
-        mov     rsi,    48     ;direccion final 
-%%espejo:
-        cmp     rdi,   rsi
-        jg      %%fin_tablero_espejo
-        mov     al, [%1 + rdi]   ; inicio
-        mov     dl, [%1 + rsi]   
-
-        mov     [%2 + rdi], dl
-        mov     [%2 + rsi], al
-
-        inc     rdi
-        dec     rsi
-        jmp     %%espejo
-
-%%fin_tablero_espejo:
-%endmacro   
-; => %1 : opcion ingresada, %2 : opcion a comparar
-%macro  comparar_opciones 2
-        mov     al,    [%1]
-        mov     bl,    %2
-        cmp     al,    bl
+%macro print_s 1
+        mov     rdi,%1  
+        mov     rsi,0 
+        mprintf 
 %endmacro
 
-%macro copiar_matriz 1
-        mov     rcx,    0
-%%inicio:
-        cmp     rcx,    49
-        jg      %%fin
-        mov     al,     [%1+ rcx]
-        mov     [tablero+rcx], al
-        inc     rcx
-        jmp     %%inicio
-%%fin:
-%endmacro
-%macro  limpiar 0
+%macro limpiar 0
         mov     rdi,    cmd_clear
         sub     rsp,    8
         call    system
         add     rsp,    8
 %endmacro
-;ejecuta la instruccion ingresada => %1 : opcion ingresada, %2 : opcion
-%macro ejecutar_intruccion 1
-        mov     bl,    [opcion_ingresada]
-        mov     al,   104       ; codigo h
-        cmp     al,    bl
-        je      final_juego             ;salir
 
-        mov     al,    49       ; codigo 1
-        cmp     al,    bl
-        je      %%arriba                ;mismo tablero
+; --------------------------
 
-        mov     al,    50       ;codigo 2
-        cmp     al,    bl
-        je      %%izquierda
+; Calcular posicion del vector en base a posicion matriz: 
+; props: 
+; %1: fil -> x
+; %2: col -> y
+; %3: cantidad_columnas -> length
 
-        mov     al,    51       ;codigo 3
-        cmp     al,    bl
-        je      %%derecha               ;rotar derecha
-
-        mov     al,    52       ;codigo 4
-        cmp     al,    bl
-        je      %%abajo                 ;rotar abajo
-        jmp     %%incorrecto
-%%incorrecto:
-        limpiar
-        imprimir_opcion        opcion_incorrecta
-        jmp     pedir_tablero
-%%arriba:
-        copiar_matriz           matriz
-        jmp     %%fin
-%%derecha:
-        rotar_derecha           matriz, tablero
-        jmp     %%fin
-%%abajo:
-        tablero_vertical        matriz, tablero
-        jmp     %%fin
-%%izquierda:
-        rotar_derecha           matriz, tablero_rotacion_derecha
-        tablero_vertical          tablero_rotacion_derecha,tablero
-        jmp     %%fin
-%%fin:
-
+%macro obtener_posicion_vector_matriz 3
+        movzx   rax,    BYTE [%1]               ; rax = fila (ampliar a 64 bits para cálculos)
+        movzx   rbx,    BYTE [%2]               ; rbx = columna (ampliar a 64 bits)
+        
+        imul    rax,    %3                      ; (fila) * CANT_COL
+        add     rax,    rbx                     ; (fila) * CANT_COL + (columna) = pos
 %endmacro
 
-; => %1 : 
-%macro leer_entrada 0
+; Props
+; al: elemento a buscar
+; %1: vector
+; %2: longitud
+; -----------------------------------------------------------
+%macro vector_incluye 2
+
+        mov     rcx,    0
+%%iterar_vector:
+        movzx   rbx,     BYTE [%1+rcx]                    ; [0+rcx] siendo rcx < 16
+        cmp     al,      bl                               ; si la poscion adyancente es una posicion invalida
+        je      %%encontrado                              ; evaluo la siguiente 
+        
+        inc     rcx
+        cmp     rcx,    %2
+        jl      %%iterar_vector             ; repito el loop hasta terminar de iterar sobre invalidas[]
+      
+        mov     al, 1
+        jmp     %%fin
+
+%%encontrado:
+        mov     al, 0
+        jmp     %%fin
+%%fin:
+%endmacro       
+; -----------------------------------------------------------
+
+section .data
+        opcion_comer            db      " %d- 🍴 para comer (%d, %d)",10,0
+        opcion_vacia            db      " %d- mover (%d, %d)",10,0
+        linea_posiciones        db      "     0  1  2  3  4  5  6",0
+        linea_arriba            db      "   ┏━━━━━━━━━━━━━━━━━━━━━┓",0
+        linea_abajo             db      "   ┗━━━━━━━━━━━━━━━━━━━━━┛",0
+        linea_vertical          db      "┃",0
+        formato_contador        db      " %d ", 0
+        formato                 db      ' %c ', 0
+        formato_int             db      "%d",0
+        salto_linea              db      10, 0
+        matriz                  db      ' ', ' ', 'X', 'X', 'X', ' ', ' '  ; Fila 1
+                                db      ' ', ' ', 'X', 'X', 'X', ' ', ' '  ; Fila 2
+                                db      'X', 'X', 'X', '.', 'X', 'X', 'X'  ; Fila 3
+                                db      'X', 'X', 'X', 'X', 'X', 'X', 'X'  ; Fila 4
+                                db      'X', 'X', '.', 'O', '.', 'X', 'X'  ; Fila 5
+                                db      ' ', ' ', '.', '.', '.', ' ', ' '  ; Fila 6
+                                db      ' ', ' ', '.', '.', '.', ' ', ' '  ; Fila 7
+
+        CANT_FIL                equ     7
+        CANT_COL                equ     7
+        LONG_ELEM               equ     1
+        opcion_incorrecta       db      "------------------------------",10," La opcion ingresada en invalida",10,"------------------------------",10,0
+        opcion_salir            db      "q-  para salir",0
+        mensaje_ingreso_oficial db      "Ingrese la fila y columna del oficial que desea mover",10,0
+        mensaje_fila            db      "Fila: ",0
+        mensaje_columna         db      "Columna: ",0
+        oficial                 db      "O"
+        soldado                 db      "X"
+        pos_vacia               db      "."
+        pos_invalida            db      " "
+        cmd_clear               db      "clear",0
+        jugador                 db      "O" ;; cambiar a soldado
+        longitud_posiciones_mov db      0
+        posiciones_mov          times 8 db 0
+        oficial_comer           db      0
+
+section .bss
+        i                       resb    1
+        j                       resb    1
+        opcion_ingresada        resb    1
+        tablero                 resb    CANT_FIL*CANT_COL ; tablero a llenar
+        tablero_rotacion_derecha resb   49
+        x                       resb    1
+        y                       resb    1
+        fil                      resb    1
+        col                       resb    1
+
+%macro verificar_salir 0
+        cmp rsi, 113
+        je final_juego
+%endmacro
+
+; Leer opcion ingresada
+; -----------------------------------------------------------
+leer_opcion:
+%macro leer_opcion 0
         sub     rsp,    8 
-        mov     rdi,    formato_Caracter
-        mov     rsi,     opcion_ingresada
-        call    scanf           ; espera a que ingreses una opcion
+        mov     rdi,    formato_int
+        mov     rsi,    opcion_ingresada
+        call    scanf                           ; espera a que ingreses una opcion
         add     rsp,    8 
+
+        verificar_salir
+%endmacro
+; -----------------------------------------------------------
+
+
+; Imprime la matriz: 
+; Props:  
+;   %1: matriz 
+; -----------------------------------------------------------
+imprimir:
+%macro imprimir_matriz 0
+
+        mov     BYTE [i], 0                     ; Inicializar fila 1
+        mov     BYTE [j], 0                     ; Inicializar columna 1
+        mputs         linea_posiciones          ; Imprime tope
+        mputs         linea_arriba              ; Imprime tope
+        mov     rdi,formato_contador  
+        movzx   rsi, byte [i] 
+        mprintf        
+        print_s       linea_vertical            ; Imprime primer borde izquierdo        
+
+%%inicio:
+        cmp     BYTE [j],      CANT_COL          ; Verificar si se llegó al final de las columnas
+        je      %%cambioFila
+
+        ; Imprimir el carácter de la posicion i,j 
+        obtener_posicion_vector_matriz      i,j,CANT_COL ; rax = posicion del vector
+        mov   rdi,formato  
+        movzx   rsi, byte [matriz + rax] 
+        mprintf   
+
+        inc     BYTE [j]
+        jmp     %%inicio
+
+%%cambioFila:
+        print_s        linea_vertical           ; imprime borde derecho
+        print_s        salto_linea
+
+        inc     BYTE [i]                        ; Ir a la siguiente fila
+        cmp     BYTE [i],      CANT_FIL         ; Verificar si se llegó al final de las filas
+        je      %%fin
+
+        mov     rdi,formato_contador  
+        movzx   rsi, byte [i] 
+        mprintf    
+        print_s        linea_vertical           ; Imprime borde izquierdo nueva fila
+        mov     BYTE    [j],   0                ; Reiniciar columna
+        jmp     %%inicio
+%%fin:
+        mputs         linea_abajo               ; Imprime borde inferior
+%endmacro
+
+; -----------------------------------------------------------
+
+
+; Verifica si la posicion es valida, devuelve al = 0 si es valida, si no al = 1
+; -----------------------------------------------------------
+verificar_pos_valida:
+%macro verificar_posicion_valida 0
+        ; mov al, BYTE %1 ; al es la posicion a evaluar
+          
+        cmp     al, 48
+        jg      %%es_invalida            ; si la posicion adyacente es mayor a 48, evaluo la siguiente
+        
+        cmp     al, 0
+        jl      %%es_invalida            ; si la posicion adyacente es menor a 0, evaluo la siguiente
+        
+        mov    al, 0
+        jmp    %%fin
+
+%%es_invalida:
+        mov     al, 1
+%%fin:
+%endmacro
+; -----------------------------------------------------------
+
+
+; Imprime las opciones de movimiento validas para el oficial 
+; Props: 
+;       %1: fil
+;       %2: col 
+; -----------------------------------------------------------
+imprimir_pos_oficial:
+%macro obtener_pos_validas_oficial 2
+        ; mputs   opcion_salir
+        
+        mov BYTE [i], -1   ; auxiliar adyacencia filas      
+        mov BYTE [longitud_posiciones_mov], 0
+        mov BYTE [posiciones_mov], 0
+
+        mov al, BYTE [%1]
+        mov [x], al
+        mov al, BYTE [%2]
+        mov [y], al
+
+        obtener_posicion_vector_matriz       x,y,CANT_COL 
+        mov r12b, al
+%%filas:
+        mov BYTE [j], -1             ; voy a la primera columna aux
+        mov al, BYTE [%1]
+        add al, [i]
+        mov [x], al
+
+%%columnas:
+        mov al, BYTE [%2]
+        add al, [j]
+        mov [y], al
+
+        obtener_posicion_vector_matriz       x,y,CANT_COL ; rax = posicion adyancente del vector
+
+        ; si la poscion adyancente es la posicion inicial es invalida
+        cmp     al,    r12b
+        je      %%siguiente_posicion_adyacente   
+
+        mov dl, al
+        ; si la poscion adyancente es una posicion invalida
+        verificar_posicion_valida
+        cmp     al, 1
+        je      %%siguiente_posicion_adyacente   
+        mov al, dl
+
+%%es_pos_valida:
+        mov dl, BYTE [matriz+rax]                       ; asigno a dl, el caracter de la matriz
+        cmp dl, [pos_invalida]                          ; Si en la posicion es una invalida no es valida
+        je %%siguiente_posicion_adyacente
+
+        cmp dl, [oficial]                               ; Si en la posicion es un oficial no es valida
+        je %%siguiente_posicion_adyacente
+      
+        cmp dl, [soldado]                               ; Si en la posicion es un oficial no es valida
+        je %%es_soldado
+
+%%mostrar_vacio: 
+        mov bl, al
+        print_opcione_moviento  opcion_vacia, longitud_posiciones_mov, x, y
+        mov al, bl
+        jmp     %%añadir_movimiento
+
+%%añadir_movimiento:
+        movzx     rdi, BYTE [longitud_posiciones_mov]
+        mov     BYTE [posiciones_mov + rdi], al
+        inc     BYTE [longitud_posiciones_mov]
+        jmp     %%siguiente_posicion_adyacente
+
+%%es_soldado:
+        ; Desplazo en la misma direccion 1 mas
+        mov al, [x]
+        add al, [i]
+        mov [x], al
+
+        mov al, [y]
+        add al, [j]
+        mov [y], al
+
+        ; si es vacia es valida
+        obtener_posicion_vector_matriz       x,y,CANT_COL 
+        mov dl, BYTE [matriz+rax]                       ; asigno a dl, el caracter de la matriz
+        
+        mov al, [x]
+        sub al, [i]
+        mov [x], al
+
+        mov al, [y]
+        sub al, [j]
+        mov [y], al
+
+        cmp dl, [pos_vacia]
+        je %%mostrar_comer
+       
+%%siguiente_posicion_adyacente:
+        inc     BYTE    [j]
+        cmp     BYTE    [j],    1
+        jle     %%columnas        ; si j es <=1 volvemos a repetir con j+1
+        
+        inc     BYTE    [i]     
+        cmp     BYTE    [i],    1
+        jg      %%fin             ; si i es >1 terminamos
+
+        jmp      %%filas    
+
+%%mostrar_comer: 
+        print_opcione_moviento  opcion_comer, longitud_posiciones_mov, x, y
+        mov BYTE [oficial_comer], 1
+        obtener_posicion_vector_matriz       x,y,CANT_COL
+        jmp     %%añadir_movimiento
+
+%%mostrar_oficial: 
+        jmp     %%siguiente_posicion_adyacente
+
+%%fin:
+%endmacro
+; -----------------------------------------------------------
+
+; Imprime las opciones y solicita la opcion a mover
+; -----------------------------------------------------------
+amover_oficial:
+%macro mover_oficial 0
+%%solicitar_opciones:
+        obtener_pos_validas_oficial    fil, col        ; bucas las posiciones validas para las coordenadas (x,y) en este cado (6,2)
+        leer_opcion
+
+        cmp BYTE [opcion_ingresada], 0
+        jl %%invalida
+        
+        mov al, BYTE [longitud_posiciones_mov]
+        cmp BYTE [opcion_ingresada], al
+        jge %%invalida
+
+        jmp %%valida
+%%invalida:
+        cmp BYTE [opcion_ingresada], -1
+        je final_juego
+
+        print_s opcion_incorrecta
+        jmp %%solicitar_opciones
+
+%%valida:
+        movzx rdi, BYTE [opcion_ingresada]
+        movzx rsi, BYTE [posiciones_mov + rdi] ; rsi = posicion destino
+        
+        mov al, BYTE [matriz + rsi] ; al = caracter en la posicion destino
+        
+        cmp al, [pos_vacia]
+        je %%mover
+
+%%comer:
+        ; posion vacia en el destino soldado
+        mov bl, BYTE [pos_vacia]
+        mov BYTE [matriz + rsi], bl
+        
+        ; pisa en la posicion de la matriz con el oficial
+        obtener_posicion_vector_matriz    fil,col, CANT_COL ; al = posicion original
+        
+        mov bl, sil             ; bl = y 
+        sub bl, al              ; bl = y - x
+        imul rbx, 2             ; bl = 2(y-x)
+        add bl, al              ; bl = x + 2(y-x)
+        movzx rsi, bl           ; rsi = x + 2(y-x)
+        mov BYTE [oficial_comer], 0
+
+%%mover:
+        cmp BYTE [oficial_comer], 1
+        je %%borrar
+
+        ; pisa en la posicion de destino con el jugador
+        mov bl, BYTE [jugador] 
+        mov BYTE [matriz + rsi], bl
+
+%%borrar: 
+        ; Borrar al oficial de la posicion original dejando un carater vacio
+        obtener_posicion_vector_matriz    fil,col, CANT_COL
+        mov bl, BYTE [pos_vacia]
+        mov BYTE [matriz + rax], bl
+        cmp BYTE [oficial_comer], 0
+         
+%%fin:
+%endmacro
+; -----------------------------------------------------------
+
+
+;
+%macro ingresar_oficial 0
+%%solicitar_posicion:
+        ;solicitar la fila y columna del oficial que desea jugar
+        print_s mensaje_ingreso_oficial
+        print_s mensaje_fila
+        leer_opcion
+        mov al, BYTE [opcion_ingresada]
+        mov BYTE [fil], al
+
+        print_s mensaje_columna
+        leer_opcion
+        mov al, BYTE [opcion_ingresada]
+        mov BYTE [col], al
+
+        obtener_posicion_vector_matriz    fil, col, CANT_COL
+        mov al, BYTE [matriz + rax]
+        cmp al, [oficial]
+        je %%fin
+        print_s opcion_incorrecta
+        jmp %%solicitar_posicion
+%%fin:
 %endmacro
 
 section .text
 main:
-pedir_tablero:
-        imprimir_opcion         cadena_pedir
-        imprimir_opcion         tablero_normal
-        imprimir_opcion         tablero_abajo
-        imprimir_opcion         tablero_derecha
-        imprimir_opcion         tablero_izquierda
-        leer_entrada  
-        ejecutar_intruccion     opcion_ingresada
-        limpiar
-        imprimir_matriz         tablero
 inicio_juego:
+        imprimir_matriz
 
-
-        ;imprimir_opcion      cadena_pedir
-        imprimir_pos_validas    7,3       ; bucas las posiciones validas para las coordenadas (x,y) en este cado (7,3)
-
-        ;leer_entrada      
-        ;ejecutar_intruccion     opcion_ingresada
+pun:
+        ingresar_oficial
+        mover_oficial
+        
+        jmp inicio_juego
 final_juego:
         ret
 
@@ -367,3 +455,113 @@ final_juego:
 
 
 
+
+
+
+; Rotar matriz hacia la derecha:
+; Props:
+; %1: matriz
+; %2: tablero_rotacion_derecha
+%macro rotar_derecha 2
+        mov     BYTE [i], 0
+        mov     BYTE [j], 0
+%%inicio:
+        cmp     BYTE [i],  CANT_FIL          
+        je      %%fin             
+
+        cmp     BYTE [j],  CANT_COL        
+        je      %%cambioFila    
+
+        obtener_posicion_vector_matriz  j,i,CANT_COL
+        movzx   rdx, BYTE [%1 + rax]   ; rdx = matriz[j][i]
+
+        obtener_posicion_vector_matriz i,j, CANT_COL
+        mov     [%2 + rax], rdx         ; matriz_inversa[i][j] = matriz[j][i] 
+
+        inc     BYTE [j]                   
+        jmp     %%inicio                     
+
+%%cambioFila:
+        inc     BYTE [i]                  
+        mov     BYTE [j],    0            
+        jmp     %%inicio
+%%fin:
+%endmacro
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+;; PROBABLEMENTE NO HACE FALTA
+;voltea la matriz hacia abajo %1 matriz fuente, %2: matriz destino
+; %macro tablero_vertical 2
+;         mov     rdi,    0       ;direccion inicio
+;         mov     rsi,    48      ;direccion final 
+; %%espejo:
+;         cmp     rdi,   rsi
+;         jg      %%fin_tablero_espejo
+;         mov     al, [%1 + rdi]   ; inicio
+;         mov     dl, [%1 + rsi]   
+
+;         mov     [%2 + rdi], dl
+;         mov     [%2 + rsi], al
+
+;         inc     rdi
+;         dec     rsi
+;         jmp     %%espejo
+
+; %%fin_tablero_espejo:
+; %endmacro   
+
+
+; Menu inicial
+; %macro ejecutar_intruccion 0
+;         mov     bl,    [opcion_ingresada]
+;         mov     al,   104       ; codigo h
+;         cmp     al,    bl
+;         je      final_juego     ;salir
+
+;         mov     al,    49       ; codigo 1
+;         cmp     al,    bl
+;         je      %%arriba        ;mismo tablero
+
+;         mov     al,    50       ;codigo 2
+;         cmp     al,    bl
+;         je      %%izquierda
+
+;         mov     al,    51       ;codigo 3
+;         cmp     al,    bl
+;         je      %%derecha               ;rotar derecha
+
+;         mov     al,    52       ;codigo 4
+;         cmp     al,    bl
+;         je      %%abajo                 ;rotar abajo
+; %%incorrecto:
+;         limpiar
+;         mputs        opcion_incorrecta
+;         jmp     pedir_tablero
+; %%arriba:
+;         copiar_matriz           matriz
+;         jmp     %%fin
+; %%derecha:
+;         rotar_derecha           matriz, tablero
+;         jmp     %%fin
+; %%abajo:
+;         tablero_vertical        matriz, tablero
+;         jmp     %%fin
+; %%izquierda:
+;         rotar_derecha           matriz, tablero_rotacion_derecha
+;         tablero_vertical        tablero_rotacion_derecha,tablero
+;         jmp     %%fin
+; %%fin:
+; %endmacro
