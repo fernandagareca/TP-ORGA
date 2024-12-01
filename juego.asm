@@ -177,6 +177,8 @@ section .bss
         cmp rax, 0
         jg %%fin
 
+        verificar_salir
+
         cmp rsi, 48
         jl %%error
         cmp rsi, 57
@@ -189,7 +191,6 @@ section .bss
         clean_buffer
         jmp %%pedir
 %%fin:
-        verificar_salir
 %endmacro
 ; -----------------------------------------------------------
 
