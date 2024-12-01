@@ -104,9 +104,9 @@ section .data
         salto_linea              db      10, 0
         matriz                  db      ' ', ' ', 'X', 'X', 'X', ' ', ' '  ; Fila 1
                                 db      ' ', ' ', 'X', 'X', 'X', ' ', ' '  ; Fila 2
-                                db      'X', 'X', 'X', '.', 'X', 'X', 'X'  ; Fila 3
+                                db      'X', 'X', 'X', 'X', 'X', 'X', 'X'  ; Fila 3
                                 db      'X', 'X', 'X', 'X', 'X', 'X', 'X'  ; Fila 4
-                                db      'X', 'X', '.', 'O', '.', 'X', 'X'  ; Fila 5
+                                db      'X', 'X', '.', '.', '.', 'X', 'X'  ; Fila 5
                                 db      ' ', ' ', '.', '.', '.', ' ', ' '  ; Fila 6
                                 db      ' ', ' ', '.', '.', '.', ' ', ' '  ; Fila 7
 
@@ -118,6 +118,9 @@ section .data
         mensaje_ingreso_oficial db      "Ingrese la fila y columna del oficial que desea mover",10,0
         mensaje_fila            db      "Fila: ",0
         mensaje_columna         db      "Columna: ",0
+        mensaje_perdio_oficiales db     "No hay ofiales vivos, ganaron los soldados",10,0
+        mensaje_perdio_soldados db      "No hay soldados suficientes, ganaron los oficiales",10,0
+        mensaje_gano_soldados   db      "Ganaron los soldados, porque llenaron el cueartel",10,0
         oficial                 db      "O"
         soldado                 db      "X"
         pos_vacia               db      "."
@@ -127,6 +130,9 @@ section .data
         longitud_posiciones_mov db      0
         posiciones_mov          times 8 db 0
         oficial_comer           db      0
+        oficiales_vivos         db      2
+        soldados_vivos          db      24
+        cuartel                 db      30,31,32,37,38,39,44,45,46
 
 section .bss
         i                       resb    1
@@ -336,7 +342,9 @@ imprimir_pos_oficial:
 
 %%mostrar_comer: 
         print_opcione_moviento  opcion_comer, longitud_posiciones_mov, x, y
+
         mov BYTE [oficial_comer], 1
+        
         obtener_posicion_vector_matriz       x,y,CANT_COL
         jmp     %%añadir_movimiento
 
@@ -364,9 +372,6 @@ amover_oficial:
 
         jmp %%valida
 %%invalida:
-        cmp BYTE [opcion_ingresada], -1
-        je final_juego
-
         print_s opcion_incorrecta
         jmp %%solicitar_opciones
 
@@ -392,6 +397,7 @@ amover_oficial:
         imul rbx, 2             ; bl = 2(y-x)
         add bl, al              ; bl = x + 2(y-x)
         movzx rsi, bl           ; rsi = x + 2(y-x)
+
         mov BYTE [oficial_comer], 0
 
 %%mover:
@@ -407,14 +413,20 @@ amover_oficial:
         obtener_posicion_vector_matriz    fil,col, CANT_COL
         mov bl, BYTE [pos_vacia]
         mov BYTE [matriz + rax], bl
+
         cmp BYTE [oficial_comer], 0
-         
+        je %%fin
+        
+        cmp BYTE [oficial_comer], 0
+        dec BYTE [oficiales_vivos] 
 %%fin:
 %endmacro
 ; -----------------------------------------------------------
 
 
-;
+;Seleccionar la pos de un oficial
+; -----------------------------------------------------------
+aingres_oficial:
 %macro ingresar_oficial 0
 %%solicitar_posicion:
         ;solicitar la fila y columna del oficial que desea jugar
@@ -437,16 +449,58 @@ amover_oficial:
         jmp %%solicitar_posicion
 %%fin:
 %endmacro
+; -----------------------------------------------------------
+
+%macro revisar_cuartel 0
+pun:
+        mov rcx, 0
+%%iterar_cuartel:
+        mov al, BYTE [cuartel + rcx]
+        mov al, BYTE [matriz + rax]
+        cmp al, [soldado]
+        jne %%fin
+
+        inc cl
+        cmp cl, 9
+        jl %%iterar_cuartel
+
+        print_s mensaje_gano_soldados
+        jmp final_juego
+
+%%fin:
+%endmacro
+
+%macro verificar_victoria 0
+        cmp BYTE [oficiales_vivos], 0
+        je %%perdio_oficiales
+
+        cmp BYTE [soldados_vivos], 9
+        jl %%perdio_soldados
+        
+        revisar_cuartel
+
+        jmp %%fin
+
+%%perdio_oficiales:
+        print_s mensaje_perdio_oficiales
+        jmp final_juego
+
+%%perdio_soldados:
+        print_s mensaje_perdio_soldados
+        jmp final_juego
+
+%%fin:
+%endmacro
 
 section .text
 main:
 inicio_juego:
         imprimir_matriz
 
-pun:
         ingresar_oficial
         mover_oficial
-        
+
+        verificar_victoria    
         jmp inicio_juego
 final_juego:
         ret
