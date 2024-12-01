@@ -25,7 +25,7 @@ extern system
         add     rsp,    8 
 %endmacro
 
-%macro print_opcione_moviento 4
+%macro print_opcion_moviento 4
         mov     rdi, %1  
         movzx   rsi, byte [%2]     
         movzx   rdx, byte [%3]     
@@ -68,6 +68,7 @@ extern system
 ; al: elemento a buscar
 ; %1: vector
 ; %2: longitud
+; -> 1 true, 0 false
 ; -----------------------------------------------------------
 %macro vector_incluye 2
 
@@ -105,7 +106,7 @@ section .data
         matriz                  db      ' ', ' ', 'X', 'X', 'X', ' ', ' '  ; Fila 1
                                 db      ' ', ' ', 'X', 'X', 'X', ' ', ' '  ; Fila 2
                                 db      'X', 'X', 'X', 'X', 'X', 'X', 'X'  ; Fila 3
-                                db      'X', 'X', 'X', '.', 'X', 'X', 'X'  ; Fila 4
+                                db      'X', 'X', 'X', 'X', 'X', 'X', 'X'  ; Fila 4
                                 db      'X', 'X', '.', '.', '.', 'X', 'X'  ; Fila 5
                                 db      ' ', ' ', '.', '.', 'O', ' ', ' '  ; Fila 6
                                 db      ' ', ' ', 'O', '.', '.', ' ', ' '  ; Fila 7
@@ -115,8 +116,8 @@ section .data
 
         CANT_FIL                equ     7
         CANT_COL                equ     7
-        LONG_ELEM               equ     1
-        opcion_incorrecta       db      "------------------------------",10," La opcion ingresada en invalida",10,"------------------------------",10,0
+        opcion_incorrecta       db      "----------------------------------------",10," La opcion ingresada en invalida",10,"----------------------------------------",10,0
+        sin_opciones       db      "----------------------------------------",10," No hay posiciones a las que moverse",10,"----------------------------------------",10,0
         opcion_salir            db      "🆀-  para salir (en minuscula)",0
         mensaje_ingreso_oficial db      "Ingrese la fila y columna del oficial que desea mover",10,0
         mensaje_ingreso_soldado db      "Ingrese la fila y columna del soldado que desea mover",10,0
@@ -132,7 +133,7 @@ section .data
         pos_vacia               db      "."
         pos_invalida            db      " "
         cmd_clear               db      "clear",0
-        jugador                 db      "O" ;; cambiar a soldado
+        jugador                 db      "X"
         longitud_posiciones_mov db      0
         posiciones_mov          times 8 db 0
         oficial_comer           db      0
@@ -145,12 +146,10 @@ section .bss
         i                       resb    1
         j                       resb    1
         opcion_ingresada        resb    1
-        tablero                 resb    CANT_FIL*CANT_COL ; tablero a llenar
-        tablero_rotacion_derecha resb   49
         x                       resb    1
         y                       resb    1
-        fil                      resb    1
-        col                       resb    1
+        fil                     resb    1
+        col                     resb    1
 
 %macro verificar_salir 0
         cmp rsi, 113
@@ -189,6 +188,10 @@ imprimir:
         mprintf
         mputs      salto_linea
 
+        mov     rdi,formato_contador  
+        movzx   rsi, byte [oficiales_vivos] 
+        mprintf
+        mputs      salto_linea
 
         mputs         linea_posiciones          ; Imprime tope
         mputs         linea_arriba              ; Imprime tope
@@ -254,31 +257,28 @@ verificar_pos_valida:
 
 
 ; Imprime las opciones de movimiento validas para el oficial 
-; Props: 
-;       %1: fil
-;       %2: col 
 ; -----------------------------------------------------------
 imprimir_pos_oficial:
-%macro obtener_pos_validas_oficial 2
+%macro obtener_pos_validas_oficial 0
         mov BYTE [longitud_posiciones_mov], 0
         mov BYTE [posiciones_mov], 0
 
         mov BYTE [i], -1   
-        mov al, BYTE [%1]
+        mov al, BYTE [fil]
         mov [x], al
-        mov al, BYTE [%2]
+        mov al, BYTE [col]
         mov [y], al
 
         obtener_posicion_vector_matriz       x,y,CANT_COL 
         mov r12b, al
 %%filas:
         mov BYTE [j], -1             ; voy a la primera columna aux
-        mov al, BYTE [%1]
+        mov al, BYTE [fil]
         add al, [i]
         mov [x], al
 
 %%columnas:
-        mov al, BYTE [%2]
+        mov al, BYTE [col]
         add al, [j]
         mov [y], al
 
@@ -308,7 +308,7 @@ imprimir_pos_oficial:
 
 %%mostrar_vacio: 
         mov bl, al
-        print_opcione_moviento  opcion_vacia, longitud_posiciones_mov, x, y
+        print_opcion_moviento  opcion_vacia, longitud_posiciones_mov, x, y
         mov al, bl
         jmp     %%añadir_movimiento
 
@@ -355,7 +355,7 @@ imprimir_pos_oficial:
         jmp      %%filas    
 
 %%mostrar_comer: 
-        print_opcione_moviento  opcion_comer, longitud_posiciones_mov, x, y
+        print_opcion_moviento  opcion_comer, longitud_posiciones_mov, x, y
 
         mov BYTE [oficial_comer], 1
         
@@ -371,12 +371,38 @@ imprimir_pos_oficial:
 
 ; Imprime las opciones y solicita la opcion a mover
 ; -----------------------------------------------------------
-amover_oficial:
-%macro mover_oficial 0
+amover_jugador:
+%macro mover_jugador 0
 %%solicitar_opciones:
-        obtener_pos_validas_oficial    fil, col        ; bucas las posiciones validas para las coordenadas (x,y) en este cado (6,2)
-        leer_opcion
+        mov al, BYTE [jugador]
+        cmp al, [soldado] 
+        je %%uso_soldado
 
+        obtener_pos_validas_oficial     ; bucas las posiciones validas para las coordenadas (x,y) en este cado (6,2)
+
+%%verificar_hay_movimientos_oficial:
+        cmp BYTE [longitud_posiciones_mov], 0
+        jg %%leer
+
+        print_s sin_opciones
+
+        ingresar_coordenadas_jugador   mensaje_ingreso_oficial, oficial
+        jmp %%solicitar_opciones
+
+%%uso_soldado:
+        obtener_pos_validas_soldado 
+
+%%verificar_hay_movimientos_soldado:
+        cmp BYTE [longitud_posiciones_mov], 0
+        jg %%leer
+
+        print_s sin_opciones
+
+        ingresar_coordenadas_jugador   mensaje_ingreso_soldado,soldado
+        jmp %%solicitar_opciones
+
+%%leer:
+        leer_opcion
         cmp BYTE [opcion_ingresada], 0
         jl %%invalida
         
@@ -449,14 +475,14 @@ amover_oficial:
         je %%fin
 
         mov BYTE [posiciones_oficiales + rcx], 0
-        cmp BYTE [oficial_comer], 0
+        mov BYTE [oficial_comer], 0
         dec BYTE [oficiales_vivos] 
 %%fin:
 %endmacro
 ; -----------------------------------------------------------
 
 
-;Seleccionar la pos de un oficial
+;Seleccionar la pos de un jugador
 ; -----------------------------------------------------------
 ;  %1 : cadena para pedir coedenadas del jugador actual
 ;  %2 : caracter de personaje actual (oficial o soldado)
@@ -507,6 +533,9 @@ revi_cuar:
 %endmacro
 ; -----------------------------------------------------------
 
+; Revisa que los oficiales no esten rodeados
+; -----------------------------------------------------------
+revi_oficiales:
 %macro revisar_oficiales 0
         mov cl, 0
 %%iterar_oficiales:
@@ -575,9 +604,12 @@ revi_cuar:
         jmp final_juego
 %%fin:
 %endmacro
+; -----------------------------------------------------------
+
 
 ; Verifica los casos de victoria
 ; -----------------------------------------------------------
+veri_vik:
 %macro verificar_victoria 0
         cmp BYTE [oficiales_vivos], 0
         je %%perdio_oficiales
@@ -601,204 +633,124 @@ revi_cuar:
 
 %%fin:
 %endmacro
-
-
 ; -----------------------------------------------------------
+
 ; fil y col tienen las coordenadas del soldado
-%macro obtener_pos_validas_soldado 0    
+; -----------------------------------------------------------
+
+%macro obtener_pos_validas_soldado 0
         mov BYTE [longitud_posiciones_mov], 0
         mov BYTE [posiciones_mov], 0
 
+        mov al, BYTE [fil]
+        mov [x], al
+        mov al, BYTE [col]
+        mov [y], al
+
         ; si el soldado esta en una posicion roja
-        obtener_posicion_vector_matriz  fil,col,CANT_COL
-        mov     rcx,0
-%%buscar_soldados_rojos:
-        cmp al, BYTE [posiciones_limitadas+rcx]
-        je  %%soldado_rojo
-%%seguir:
-        inc     rcx
-        cmp rcx, 4
-        jl     %%buscar_soldados_rojos
-        jmp     %%soldados_normales
+        obtener_posicion_vector_matriz  fil,col,CANT_COL ; al = posicion del soldado
+        vector_incluye posiciones_limitadas, 4
+        cmp al, 0
+        je %%soldado_rojo
+
+%%soldado_normal:
+	mov BYTE [i], -1
+
+%%iterar_adyacentes:
+        obtener_posicion_vector_matriz  fil,col,CANT_COL ; al = posicion del soldado
+        mov bl, 7
+        add bl, [i] ; bl = 7 + i
+        add bl, al  ; bl = n + 7 + i  BL es destino
+        
+        movzx rbx, bl
+
+        cmp bl, 48
+        jg %%next ; si la posicion adyacente es mayor a 48
+
+        mov dl, byte [matriz + rbx] ; bl = matriz[n + i*d + j]
+        cmp dl, [pos_vacia]
+        jne %%next
+
+%%es_pos_valida:
+        mov dl, byte [fil]
+        inc dl
+        mov [x], dl
+
+        mov dl, byte [col]
+        add dl, [i]
+        mov [y], dl
+
+        print_opcion_moviento          opcion_vacia, longitud_posiciones_mov, x, y
+
+        movzx rdi, BYTE [longitud_posiciones_mov]
+        mov BYTE [posiciones_mov + rdi], bl
+        inc BYTE [longitud_posiciones_mov]
+
+%%next:
+        inc BYTE [i]
+        cmp BYTE [i], 2
+        jl %%iterar_adyacentes
+        jmp %%fin
 
 %%soldado_rojo:
+        obtener_posicion_vector_matriz  fil,col,CANT_COL ; al = posicion del soldado
         cmp     BYTE [col],3
-        jl      %%suma_columna
-        dec     BYTE [col]
-        jmp     %%proseguir
-%%suma_columna:
-        inc     BYTE [col]
-%%proseguir:
-        obtener_posicion_vector_matriz  fil,col,CANT_COL
-        mov     dl , [matriz+rax]
-        cmp     dl, BYTE [pos_vacia]
-        jne      %%fin                               ; si es distinto de vacio siguo con la siguiente pos del vector de pos limitadas 
+        jl      %%mueve_a_derecha
 
-        print_opcione_moviento          opcion_vacia, longitud_posiciones_mov,fil,col
-        movzx   rdi, BYTE [longitud_posiciones_mov]
-        mov     BYTE [posiciones_mov + rdi], al
-        inc     BYTE [longitud_posiciones_mov]
-        jmp     %%fin
-
-%%soldados_normales:
-        mov cl ,-1 ; contador aux
-        inc BYTE [fil]
-
-%%iterar_pos_soldados:
-        add     BYTE [col],cl
-
-        obtener_posicion_vector_matriz   fil,col,CANT_COL ; en al se encuentra la direccion
-        mov   dl , [matriz+rax]
-        cmp   dl,BYTE [pos_vacia]
-        jne   %%continuar                       ; si es distinto de vacio , analizo la proxima posicion
-
-        print_opcione_moviento          opcion_vacia, longitud_posiciones_mov,fil,col
-        movzx   rdi, BYTE [longitud_posiciones_mov]
-        mov     BYTE [posiciones_mov + rdi], al
-        inc     BYTE [longitud_posiciones_mov]
+%%mueve_a_izquierda:
+        dec al ; al = posicion izquierda
+        dec BYTE [y]
+        jmp %%verificar_pos
         
-%%continuar:
-        inc   cl
-        cmp   cl, 2
-        jl   %%iterar_pos_soldados 
+%%mueve_a_derecha:
+        inc al ; al = posicion derecha
+        inc BYTE [y]
+
+%%verificar_pos:
+        mov dl, al             ; dl = posicion adyacente
+        
+        verificar_posicion_valida
+        cmp al, 1
+        je %%fin
+
+        mov bl, [matriz + rdx] ; bl = caracter en la posicion
+        cmp bl, BYTE [pos_vacia]
+        jne %%fin                              
+
+        mov bl, dl
+        print_opcion_moviento          opcion_vacia, longitud_posiciones_mov, x, y
+
+        movzx rdi, BYTE [longitud_posiciones_mov]
+        mov BYTE [posiciones_mov + rdi], bl
+        inc BYTE [longitud_posiciones_mov]
+
 %%fin:
 %endmacro
 
-%macro mover_soldados 0
-
-        obtener_pos_validas_soldado
-
-%endmacro
 
 section .text
 main:
 inicio_juego:
-       ; limpiar
+        limpiar 
         imprimir_matriz
+        verificar_victoria  
+         
         mputs   opcion_salir
-        ingresar_coordenadas_jugador  mensaje_ingreso_oficial,oficial
-        mover_oficial
-        imprimir_matriz
-
-        verificar_victoria   
-mari:
         ingresar_coordenadas_jugador   mensaje_ingreso_soldado,soldado
-        mover_soldados
+        mover_jugador
+        
+        limpiar 
+        imprimir_matriz
+        verificar_victoria   
+
+        mov al, BYTE [oficial]
+        mov BYTE [jugador], al
+        
+        ingresar_coordenadas_jugador  mensaje_ingreso_oficial,oficial
+        mover_jugador
+
+        mov al, BYTE [soldado]
+        mov BYTE [jugador], al
         jmp inicio_juego
 final_juego:
         ret
-
-
-
-
-
-
-
-
-; Rotar matriz hacia la derecha:
-; Props:
-; %1: matriz
-; %2: tablero_rotacion_derecha
-%macro rotar_derecha 2
-        mov     BYTE [i], 0
-        mov     BYTE [j], 0
-%%inicio:
-        cmp     BYTE [i],  CANT_FIL          
-        je      %%fin             
-
-        cmp     BYTE [j],  CANT_COL        
-        je      %%cambioFila    
-
-        obtener_posicion_vector_matriz  j,i,CANT_COL
-        movzx   rdx, BYTE [%1 + rax]   ; rdx = matriz[j][i]
-
-        obtener_posicion_vector_matriz i,j, CANT_COL
-        mov     [%2 + rax], rdx         ; matriz_inversa[i][j] = matriz[j][i] 
-
-        inc     BYTE [j]                   
-        jmp     %%inicio                     
-
-%%cambioFila:
-        inc     BYTE [i]                  
-        mov     BYTE [j],    0            
-        jmp     %%inicio
-%%fin:
-%endmacro
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-;; PROBABLEMENTE NO HACE FALTA
-;voltea la matriz hacia abajo %1 matriz fuente, %2: matriz destino
-; %macro tablero_vertical 2
-;         mov     rdi,    0       ;direccion inicio
-;         mov     rsi,    48      ;direccion final 
-; %%espejo:
-;         cmp     rdi,   rsi
-;         jg      %%fin_tablero_espejo
-;         mov     al, [%1 + rdi]   ; inicio
-;         mov     dl, [%1 + rsi]   
-
-;         mov     [%2 + rdi], dl
-;         mov     [%2 + rsi], al
-
-;         inc     rdi
-;         dec     rsi
-;         jmp     %%espejo
-
-; %%fin_tablero_espejo:
-; %endmacro   
-
-
-; Menu inicial
-; %macro ejecutar_intruccion 0
-;         mov     bl,    [opcion_ingresada]
-;         mov     al,   104       ; codigo h
-;         cmp     al,    bl
-;         je      final_juego     ;salir
-
-;         mov     al,    49       ; codigo 1
-;         cmp     al,    bl
-;         je      %%arriba        ;mismo tablero
-
-;         mov     al,    50       ;codigo 2
-;         cmp     al,    bl
-;         je      %%izquierda
-
-;         mov     al,    51       ;codigo 3
-;         cmp     al,    bl
-;         je      %%derecha               ;rotar derecha
-
-;         mov     al,    52       ;codigo 4
-;         cmp     al,    bl
-;         je      %%abajo                 ;rotar abajo
-; %%incorrecto:
-;         limpiar
-;         mputs        opcion_incorrecta
-;         jmp     pedir_tablero
-; %%arriba:
-;         copiar_matriz           matriz
-;         jmp     %%fin
-; %%derecha:
-;         rotar_derecha           matriz, tablero
-;         jmp     %%fin
-; %%abajo:
-;         tablero_vertical        matriz, tablero
-;         jmp     %%fin
-; %%izquierda:
-;         rotar_derecha           matriz, tablero_rotacion_derecha
-;         tablero_vertical        tablero_rotacion_derecha,tablero
-;         jmp     %%fin
-; %%fin:
-; %endmacro
