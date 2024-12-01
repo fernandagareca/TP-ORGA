@@ -1,11 +1,5 @@
 global main
-extern printf
-extern scanf
-extern puts
-extern strcpy
-extern strcmp
-extern system
-
+extern printf, scanf, puts, system, strcpy, strcmp, getchar
 ; --------------------------
 ; UTILS
 
@@ -157,16 +151,44 @@ section .bss
         je final_juego
 %endmacro
 
+%macro clean_buffer 0
+%%limpiar_buffer:
+    sub     rsp,    8 
+    call getchar        ; Leer un carácter de stdin
+    add     rsp,    8 
+    
+    cmp al, 10          ; ¿Es '\n' (ASCII 10)?
+    je %%fin              ; Si es '\n', salir
+    cmp al, -1          ; ¿Es EOF?
+    je %%fin              ; Si es EOF, salir
+    jmp %%limpiar_buffer  ; Repetir hasta limpiar
+%%fin:
+%endmacro
 ; Leer opcion ingresada
 ; -----------------------------------------------------------
-leer_opcion:
 %macro leer_opcion 0
+%%pedir:
         sub     rsp,    8 
         mov     rdi,    formato_int
         mov     rsi,    opcion_ingresada
         call    scanf                           ; espera a que ingreses una opcion
         add     rsp,    8 
 
+        cmp rax, 0
+        jg %%fin
+
+        cmp rsi, 48
+        jl %%error
+        cmp rsi, 57
+        jg %%error
+
+        jmp %%fin
+
+%%error:
+        print_s opcion_incorrecta 
+        clean_buffer
+        jmp %%pedir
+%%fin:
         verificar_salir
 %endmacro
 ; -----------------------------------------------------------
@@ -176,7 +198,6 @@ leer_opcion:
 ; Props:  
 ;   %1: matriz 
 ; -----------------------------------------------------------
-imprimir:
 %macro imprimir_matriz 0
 
         mov     BYTE [i], 0                     ; Inicializar fila 1
@@ -237,7 +258,6 @@ imprimir:
 
 ; Verifica si la posicion es valida, devuelve al = 0 si es valida, si no al = 1
 ; -----------------------------------------------------------
-verificar_pos_valida:
 %macro verificar_posicion_valida 0
         ; mov al, BYTE %1 ; al es la posicion a evaluar
           
@@ -259,7 +279,6 @@ verificar_pos_valida:
 
 ; Imprime las opciones de movimiento validas para el oficial 
 ; -----------------------------------------------------------
-imprimir_pos_oficial:
 %macro obtener_pos_validas_oficial 0
         mov BYTE [longitud_posiciones_mov], 0
         mov BYTE [posiciones_mov], 0
@@ -372,7 +391,6 @@ imprimir_pos_oficial:
 
 ; Imprime las opciones y solicita la opcion a mover
 ; -----------------------------------------------------------
-amover_jugador:
 %macro mover_jugador 0
 %%solicitar_opciones:
         mov al, BYTE [jugador]
@@ -487,7 +505,6 @@ amover_jugador:
 ; -----------------------------------------------------------
 ;  %1 : cadena para pedir coedenadas del jugador actual
 ;  %2 : caracter de personaje actual (oficial o soldado)
-aingres_oficial:
 %macro ingresar_coordenadas_jugador 2
 %%solicitar_posicion:
         ;solicitar la fila y columna del oficial que desea jugar
@@ -514,7 +531,6 @@ aingres_oficial:
 
 ;        Revisa si el cuartel esta lleno de soldados
 ; -----------------------------------------------------------
-revi_cuar:
 %macro revisar_cuartel 0
         mov rcx, 0
 %%iterar_cuartel:
@@ -536,7 +552,6 @@ revi_cuar:
 
 ; Revisa que los oficiales no esten rodeados
 ; -----------------------------------------------------------
-revi_oficiales:
 %macro revisar_oficiales 0
         mov cl, 0
 %%iterar_oficiales:
@@ -610,7 +625,6 @@ revi_oficiales:
 
 ; Verifica los casos de victoria
 ; -----------------------------------------------------------
-veri_vik:
 %macro verificar_victoria 0
         cmp BYTE [oficiales_vivos], 0
         je %%perdio_oficiales
@@ -638,7 +652,6 @@ veri_vik:
 
 ; fil y col tienen las coordenadas del soldado
 ; -----------------------------------------------------------
-
 %macro obtener_pos_validas_soldado 0
         mov BYTE [longitud_posiciones_mov], 0
         mov BYTE [posiciones_mov], 0
