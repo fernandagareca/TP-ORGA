@@ -146,6 +146,7 @@ section .bss
         i                       resb    1
         j                       resb    1
         opcion_ingresada        resb    1
+        tablero_rotacion_derecha resb   49
         x                       resb    1
         y                       resb    1
         fil                     resb    1
