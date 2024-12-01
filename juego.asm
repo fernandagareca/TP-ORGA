@@ -485,7 +485,7 @@ aingres_oficial:
 %endmacro
 ; -----------------------------------------------------------
 
-; Revisa si el cuartel esta lleno de soldados
+;        Revisa si el cuartel esta lleno de soldados
 ; -----------------------------------------------------------
 revi_cuar:
 %macro revisar_cuartel 0
