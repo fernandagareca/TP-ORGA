@@ -107,8 +107,11 @@ section .data
                                 db      'X', 'X', 'X', 'X', 'X', 'X', 'X'  ; Fila 3
                                 db      'X', 'X', 'X', 'X', 'X', 'X', 'X'  ; Fila 4
                                 db      'X', 'X', '.', '.', '.', 'X', 'X'  ; Fila 5
-                                db      ' ', ' ', '.', '.', '.', ' ', ' '  ; Fila 6
-                                db      ' ', ' ', '.', '.', '.', ' ', ' '  ; Fila 7
+                                db      ' ', ' ', '.', '.', 'O', ' ', ' '  ; Fila 6
+                                db      ' ', ' ', 'O', '.', '.', ' ', ' '  ; Fila 7
+
+        posiciones_oficiales    db      44,39
+        oficiales_rodeados      db      0,0
 
         CANT_FIL                equ     7
         CANT_COL                equ     7
@@ -121,6 +124,7 @@ section .data
         mensaje_perdio_oficiales db     "No hay ofiales vivos, ganaron los soldados",10,0
         mensaje_perdio_soldados db      "No hay soldados suficientes, ganaron los oficiales",10,0
         mensaje_gano_soldados   db      "Ganaron los soldados, porque llenaron el cueartel",10,0
+        mensaje_perdio_oficiales_rodeados db "Todos los oficiales estan rodeados",10,0
         oficial                 db      "O"
         soldado                 db      "X"
         pos_vacia               db      "."
@@ -244,12 +248,10 @@ verificar_pos_valida:
 ; -----------------------------------------------------------
 imprimir_pos_oficial:
 %macro obtener_pos_validas_oficial 2
-        ; mputs   opcion_salir
-        
-        mov BYTE [i], -1   ; auxiliar adyacencia filas      
         mov BYTE [longitud_posiciones_mov], 0
         mov BYTE [posiciones_mov], 0
 
+        mov BYTE [i], -1   
         mov al, BYTE [%1]
         mov [x], al
         mov al, BYTE [%2]
@@ -411,12 +413,29 @@ amover_oficial:
 %%borrar: 
         ; Borrar al oficial de la posicion original dejando un carater vacio
         obtener_posicion_vector_matriz    fil,col, CANT_COL
+        mov bl, BYTE [jugador]
+        cmp bl, [soldado]
+        je %%continua
+
+        mov cl, 0
+%%busca_posicion_oficial:
+        cmp BYTE [posiciones_oficiales + rcx], al
+        je %%encontro
+
+        inc cl
+        jmp %%busca_posicion_oficial
+
+%%encontro:
+        mov BYTE [posiciones_oficiales + rcx], sil ; actualizo la posicion del oficial
+
+%%continua:
         mov bl, BYTE [pos_vacia]
         mov BYTE [matriz + rax], bl
 
         cmp BYTE [oficial_comer], 0
         je %%fin
-        
+
+        mov BYTE [posiciones_oficiales + rcx], 0
         cmp BYTE [oficial_comer], 0
         dec BYTE [oficiales_vivos] 
 %%fin:
@@ -451,8 +470,10 @@ aingres_oficial:
 %endmacro
 ; -----------------------------------------------------------
 
+; Revisa si el cuartel esta lleno de soldados
+; -----------------------------------------------------------
+revi_cuar:
 %macro revisar_cuartel 0
-pun:
         mov rcx, 0
 %%iterar_cuartel:
         mov al, BYTE [cuartel + rcx]
@@ -469,7 +490,79 @@ pun:
 
 %%fin:
 %endmacro
+; -----------------------------------------------------------
 
+%macro revisar_oficiales 0
+        mov cl, 0
+%%iterar_oficiales:
+        mov al, BYTE [posiciones_oficiales + rcx] ; al posicion oficial
+	mov BYTE [i], -1
+        mov BYTE [j], -1  
+
+%%iterar_adyacentes:
+        mov bl, [i] ; bl = i
+        imul rbx, 7  ; bl = i*7 = i*d
+        add bl, [j] ; bl = i*d + j
+        add bl, al  ; bl = n + i*d + j
+        
+        movzx rbx, bl
+
+        cmp bl, al  ; si la posicion adyacente es la misma que la original
+        je %%next
+        cmp bl, 0
+        jle %%next ; si la posicion adyacente es menor o igual a 0
+        cmp bl, 48
+        jg %%next ; si la posicion adyacente es mayor a 48
+
+        mov bl, byte [matriz + rbx] ; bl = matriz[n + i*d + j]
+        cmp bl, [soldado] ; si la posicion adyacente es un soldado
+        je %%next
+
+        cmp bl, [pos_invalida] ; si la posicion adyacente es invalida
+        je %%next
+
+        jmp %%no_rodeado
+%%next:
+        inc BYTE [j]
+        cmp BYTE [j], 2
+        jl %%iterar_adyacentes
+        mov BYTE [j], -1
+        inc BYTE [i]
+        cmp BYTE [i], 2
+        jl %%iterar_adyacentes
+
+        jmp %%rodeado
+
+%%no_rodeado:
+        mov BYTE [oficiales_rodeados + rcx], 0
+        jmp %%siguiente_oficial
+
+%%rodeado:
+        mov BYTE [oficiales_rodeados + rcx], 1
+
+%%siguiente_oficial:
+        inc cl
+        cmp cl, 2 
+        jl %%iterar_oficiales
+
+%%verificar_todos_rodeados:
+        mov cl, 0
+%%iterar_oficiales_rodeados:
+        mov al, [oficiales_rodeados + rcx]
+        cmp al, 0
+        je %%fin
+
+        inc cl
+        cmp cl, 2
+        jl %%iterar_oficiales_rodeados     
+
+        print_s mensaje_perdio_oficiales_rodeados
+        jmp final_juego
+%%fin:
+%endmacro
+
+; Verifica los casos de victoria
+; -----------------------------------------------------------
 %macro verificar_victoria 0
         cmp BYTE [oficiales_vivos], 0
         je %%perdio_oficiales
@@ -478,6 +571,8 @@ pun:
         jl %%perdio_soldados
         
         revisar_cuartel
+
+        revisar_oficiales
 
         jmp %%fin
 
@@ -491,6 +586,7 @@ pun:
 
 %%fin:
 %endmacro
+; -----------------------------------------------------------
 
 section .text
 main:
