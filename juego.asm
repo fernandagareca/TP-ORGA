@@ -105,7 +105,7 @@ section .data
         matriz                  db      ' ', ' ', 'X', 'X', 'X', ' ', ' '  ; Fila 1
                                 db      ' ', ' ', 'X', 'X', 'X', ' ', ' '  ; Fila 2
                                 db      'X', 'X', 'X', 'X', 'X', 'X', 'X'  ; Fila 3
-                                db      'X', 'X', 'X', 'X', 'X', 'X', 'X'  ; Fila 4
+                                db      'X', 'X', 'X', '.', 'X', 'X', 'X'  ; Fila 4
                                 db      'X', 'X', '.', '.', '.', 'X', 'X'  ; Fila 5
                                 db      ' ', ' ', '.', '.', 'O', ' ', ' '  ; Fila 6
                                 db      ' ', ' ', 'O', '.', '.', ' ', ' '  ; Fila 7
@@ -117,14 +117,16 @@ section .data
         CANT_COL                equ     7
         LONG_ELEM               equ     1
         opcion_incorrecta       db      "------------------------------",10," La opcion ingresada en invalida",10,"------------------------------",10,0
-        opcion_salir            db      "q-  para salir",0
+        opcion_salir            db      "🆀-  para salir (en minuscula)",0
         mensaje_ingreso_oficial db      "Ingrese la fila y columna del oficial que desea mover",10,0
+        mensaje_ingreso_soldado db      "Ingrese la fila y columna del soldado que desea mover",10,0
         mensaje_fila            db      "Fila: ",0
         mensaje_columna         db      "Columna: ",0
         mensaje_perdio_oficiales db     "No hay ofiales vivos, ganaron los soldados",10,0
         mensaje_perdio_soldados db      "No hay soldados suficientes, ganaron los oficiales",10,0
         mensaje_gano_soldados   db      "Ganaron los soldados, porque llenaron el cueartel",10,0
         mensaje_perdio_oficiales_rodeados db "Todos los oficiales estan rodeados",10,0
+        mensaje_cant_soldados   db      " Cantidad soldados : ",0
         oficial                 db      "O"
         soldado                 db      "X"
         pos_vacia               db      "."
@@ -137,6 +139,7 @@ section .data
         oficiales_vivos         db      2
         soldados_vivos          db      24
         cuartel                 db      30,31,32,37,38,39,44,45,46
+        posiciones_limitadas    db      28,29,33,34
 
 section .bss
         i                       resb    1
@@ -178,6 +181,15 @@ imprimir:
 
         mov     BYTE [i], 0                     ; Inicializar fila 1
         mov     BYTE [j], 0                     ; Inicializar columna 1
+
+        mov     rdi,mensaje_cant_soldados  
+        mprintf
+        mov     rdi,formato_contador  
+        movzx   rsi, byte [soldados_vivos] 
+        mprintf
+        mputs      salto_linea
+
+
         mputs         linea_posiciones          ; Imprime tope
         mputs         linea_arriba              ; Imprime tope
         mov     rdi,formato_contador  
@@ -390,6 +402,7 @@ amover_oficial:
         ; posion vacia en el destino soldado
         mov bl, BYTE [pos_vacia]
         mov BYTE [matriz + rsi], bl
+        dec BYTE   [soldados_vivos]     ; decremento la cantidad de soldados vivos
         
         ; pisa en la posicion de la matriz con el oficial
         obtener_posicion_vector_matriz    fil,col, CANT_COL ; al = posicion original
@@ -445,11 +458,13 @@ amover_oficial:
 
 ;Seleccionar la pos de un oficial
 ; -----------------------------------------------------------
+;  %1 : cadena para pedir coedenadas del jugador actual
+;  %2 : caracter de personaje actual (oficial o soldado)
 aingres_oficial:
-%macro ingresar_oficial 0
+%macro ingresar_coordenadas_jugador 2
 %%solicitar_posicion:
         ;solicitar la fila y columna del oficial que desea jugar
-        print_s mensaje_ingreso_oficial
+        print_s %1
         print_s mensaje_fila
         leer_opcion
         mov al, BYTE [opcion_ingresada]
@@ -462,7 +477,7 @@ aingres_oficial:
 
         obtener_posicion_vector_matriz    fil, col, CANT_COL
         mov al, BYTE [matriz + rax]
-        cmp al, [oficial]
+        cmp al, [%2]
         je %%fin
         print_s opcion_incorrecta
         jmp %%solicitar_posicion
@@ -586,17 +601,89 @@ revi_cuar:
 
 %%fin:
 %endmacro
+
+
 ; -----------------------------------------------------------
+; fil y col tienen las coordenadas del soldado
+%macro obtener_pos_validas_soldado 0    
+        mov BYTE [longitud_posiciones_mov], 0
+        mov BYTE [posiciones_mov], 0
+
+        ; si el soldado esta en una posicion roja
+        obtener_posicion_vector_matriz  fil,col,CANT_COL
+        mov     rcx,0
+%%buscar_soldados_rojos:
+        cmp al, BYTE [posiciones_limitadas+rcx]
+        je  %%soldado_rojo
+%%seguir:
+        inc     rcx
+        cmp rcx, 4
+        jl     %%buscar_soldados_rojos
+        jmp     %%soldados_normales
+
+%%soldado_rojo:
+        cmp     BYTE [col],3
+        jl      %%suma_columna
+        dec     BYTE [col]
+        jmp     %%proseguir
+%%suma_columna:
+        inc     BYTE [col]
+%%proseguir:
+        obtener_posicion_vector_matriz  fil,col,CANT_COL
+        mov     dl , [matriz+rax]
+        cmp     dl, BYTE [pos_vacia]
+        jne      %%fin                               ; si es distinto de vacio siguo con la siguiente pos del vector de pos limitadas 
+
+        print_opcione_moviento          opcion_vacia, longitud_posiciones_mov,fil,col
+        movzx   rdi, BYTE [longitud_posiciones_mov]
+        mov     BYTE [posiciones_mov + rdi], al
+        inc     BYTE [longitud_posiciones_mov]
+        jmp     %%fin
+
+%%soldados_normales:
+        mov cl ,-1 ; contador aux
+        inc BYTE [fil]
+
+%%iterar_pos_soldados:
+        add     BYTE [col],cl
+
+        obtener_posicion_vector_matriz   fil,col,CANT_COL ; en al se encuentra la direccion
+        mov   dl , [matriz+rax]
+        cmp   dl,BYTE [pos_vacia]
+        jne   %%continuar                       ; si es distinto de vacio , analizo la proxima posicion
+
+        print_opcione_moviento          opcion_vacia, longitud_posiciones_mov,fil,col
+        movzx   rdi, BYTE [longitud_posiciones_mov]
+        mov     BYTE [posiciones_mov + rdi], al
+        inc     BYTE [longitud_posiciones_mov]
+        
+%%continuar:
+        inc   cl
+        cmp   cl, 2
+        jl   %%iterar_pos_soldados 
+%%fin:
+%endmacro
+
+%macro mover_soldados 0
+
+        obtener_pos_validas_soldado
+
+%endmacro
 
 section .text
 main:
 inicio_juego:
+       ; limpiar
+        imprimir_matriz
+        mputs   opcion_salir
+        ingresar_coordenadas_jugador  mensaje_ingreso_oficial,oficial
+        mover_oficial
         imprimir_matriz
 
-        ingresar_oficial
-        mover_oficial
-
-        verificar_victoria    
+        verificar_victoria   
+mari:
+        ingresar_coordenadas_jugador   mensaje_ingreso_soldado,soldado
+        mover_soldados
         jmp inicio_juego
 final_juego:
         ret
