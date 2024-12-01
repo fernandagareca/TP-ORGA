@@ -164,6 +164,7 @@ section .bss
     jmp %%limpiar_buffer  ; Repetir hasta limpiar
 %%fin:
 %endmacro
+
 ; Leer opcion ingresada
 ; -----------------------------------------------------------
 %macro leer_opcion 0
@@ -253,7 +254,6 @@ section .bss
 %%fin:
         mputs         linea_abajo               ; Imprime borde inferior
 %endmacro
-
 ; -----------------------------------------------------------
 
 
